@@ -21,16 +21,18 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configure CORS for LAN access
+# Configure CORS for production and development
+import os
+
+cors_origins = os.getenv("CORS_ORIGINS", "*")
+if cors_origins == "*":
+    origins = ["*"]
+else:
+    origins = [origin.strip() for origin in cors_origins.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # React dev server
-        "http://localhost:5173",  # Vite dev server
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-        "*"  # Allow all origins for development - restrict in production
-    ],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
