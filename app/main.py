@@ -3,7 +3,7 @@ FastAPI application entry point
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.database import engine, Base
+from app.core.database import engine, Base, SessionLocal
 from app.api.auth import router as auth_router
 from app.api.students import router as students_router
 from app.api.courses import router as courses_router
@@ -14,6 +14,95 @@ from app.api.stats import router as stats_router
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
+
+# Auto-initialize database with sample data
+def auto_initialize_database():
+    """Initialize database with sample data if empty"""
+    try:
+        from app.models import User, Course, Student, Payment
+        from app.core.auth import get_password_hash
+        from datetime import date, datetime
+        
+        db = SessionLocal()
+        
+        # Check if database is empty
+        user_count = db.query(User).count()
+        if user_count > 0:
+            print("ℹ️ Database already initialized")
+            db.close()
+            return
+        
+        print("🚀 Auto-initializing database with sample data...")
+        
+        # Create users
+        admin_user = User(
+            username="admin",
+            hashed_password=get_password_hash("admin123"),
+            role="admin"
+        )
+        superadmin_user = User(
+            username="superadmin", 
+            hashed_password=get_password_hash("super123"),
+            role="superadmin"
+        )
+        teacher_user = User(
+            username="teacher1",
+            hashed_password=get_password_hash("teacher123"),
+            role="teacher"
+        )
+        
+        db.add_all([admin_user, superadmin_user, teacher_user])
+        db.commit()
+        
+        # Create courses
+        courses = [
+            Course(name="English Language", week_days=["Monday", "Wednesday"], lesson_per_month=8, cost=150.0),
+            Course(name="Mathematics", week_days=["Tuesday", "Thursday"], lesson_per_month=8, cost=200.0),
+            Course(name="Science", week_days=["Monday", "Friday"], lesson_per_month=8, cost=180.0),
+            Course(name="History", week_days=["Wednesday", "Friday"], lesson_per_month=6, cost=120.0)
+        ]
+        
+        db.add_all(courses)
+        db.commit()
+        
+        # Create students
+        students = [
+            Student(name="John", surname="Doe", second_name="Michael", starting_date=date(2024, 9, 1), num_lesson=12, total_money=450.0),
+            Student(name="Jane", surname="Smith", second_name="Elizabeth", starting_date=date(2024, 9, 15), num_lesson=8, total_money=320.0),
+            Student(name="Bob", surname="Johnson", second_name="Robert", starting_date=date(2024, 10, 1), num_lesson=6, total_money=240.0),
+            Student(name="Alice", surname="Brown", second_name="Marie", starting_date=date(2024, 8, 20), num_lesson=15, total_money=600.0)
+        ]
+        
+        db.add_all(students)
+        db.commit()
+        
+        # Create sample payments
+        payments = [
+            Payment(money=150.0, date=date(2024, 9, 1), student_id=1, course_id=1, description="September tuition"),
+            Payment(money=200.0, date=date(2024, 9, 1), student_id=2, course_id=2, description="Math course enrollment"),
+            Payment(money=180.0, date=date(2024, 9, 15), student_id=3, course_id=3, description="Science course payment"),
+            Payment(money=120.0, date=date(2024, 10, 1), student_id=4, course_id=4, description="History class fee"),
+            Payment(money=150.0, date=date(2024, 10, 1), student_id=1, course_id=1, description="October tuition")
+        ]
+        
+        db.add_all(payments)
+        db.commit()
+        db.close()
+        
+        print("✅ Database auto-initialized successfully!")
+        print("✅ Created 3 users: admin, superadmin, teacher1")
+        print("✅ Created 4 courses")
+        print("✅ Created 4 students") 
+        print("✅ Created 5 sample payments")
+        
+    except Exception as e:
+        print(f"❌ Auto-initialization failed: {e}")
+        if 'db' in locals():
+            db.rollback()
+            db.close()
+
+# Run auto-initialization
+auto_initialize_database()
 
 app = FastAPI(
     title="LC Management API",
