@@ -54,3 +54,29 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "message": "API is operational"}
+
+@app.get("/debug")
+async def debug_info():
+    """Debug endpoint to check environment and database"""
+    import os
+    from app.core.database import SessionLocal
+    from app.models import User
+    
+    debug_info = {
+        "database_url_set": bool(os.getenv("DATABASE_URL")),
+        "secret_key_set": bool(os.getenv("SECRET_KEY")),
+        "cors_origins": os.getenv("CORS_ORIGINS", "not_set")
+    }
+    
+    # Test database connection
+    try:
+        db = SessionLocal()
+        users_count = db.query(User).count()
+        debug_info["database_connection"] = "success"
+        debug_info["users_table"] = f"exists, {users_count} users"
+        db.close()
+    except Exception as e:
+        debug_info["database_connection"] = f"error: {str(e)}"
+        debug_info["users_table"] = "error accessing table"
+    
+    return debug_info
