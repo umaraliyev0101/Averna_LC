@@ -19,37 +19,30 @@ SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
-# Password hashing with bcrypt error handling
-try:
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-except Exception as e:
-    # Fallback to basic bcrypt if CryptContext has issues
-    import bcrypt
-    pwd_context = None
-    print(f"Warning: Using fallback bcrypt due to: {e}")
+# Simple password hashing using hashlib (avoiding bcrypt issues)
+import hashlib
+import secrets
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain password against its hash"""
-    if pwd_context:
+    try:
+        # Try bcrypt first (for existing passwords)
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
         return pwd_context.verify(plain_password, hashed_password)
-    else:
-        # Fallback verification
-        import bcrypt
-        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    except Exception:
+        # Fallback to SHA256 + salt verification
+        if ':' in hashed_password:
+            salt, hash_part = hashed_password.split(':', 1)
+            return hash_part == hashlib.sha256((salt + plain_password).encode()).hexdigest()
+        return False
 
 def get_password_hash(password: str) -> str:
-    """Hash a password"""
-    # Truncate password if longer than 72 bytes (bcrypt limitation)
-    if len(password.encode('utf-8')) > 72:
-        password = password[:72]
-    
-    if pwd_context:
-        return pwd_context.hash(password)
-    else:
-        # Fallback hashing
-        import bcrypt
-        salt = bcrypt.gensalt()
-        return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+    """Hash a password using SHA256 + salt (avoiding bcrypt issues)"""
+    # Generate a random salt
+    salt = secrets.token_hex(16)
+    # Create hash with salt
+    hash_part = hashlib.sha256((salt + password).encode()).hexdigest()
+    return f"{salt}:{hash_part}"
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Create JWT token"""
