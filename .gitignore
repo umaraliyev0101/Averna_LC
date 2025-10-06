@@ -62,3 +62,12 @@ diagnose_*.py
 # Temporary files
 *.tmp
 *.temp
+
+# Railway
+.railway/
+
+# DigitalOcean files (not needed for Railway)
+docker-compose.yml
+deploy.sh
+.env.production
+nginx/

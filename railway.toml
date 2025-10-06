@@ -1,0 +1,9 @@
+# Railway automatically detects this file and uses these settings
+
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "python start.py"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

@@ -19,10 +19,6 @@ COPY . .
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV PORT=8000
 
-# Expose port
-EXPOSE 8000
-
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# Run the application (Railway will set PORT automatically)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "$PORT", "--workers", "1"]
