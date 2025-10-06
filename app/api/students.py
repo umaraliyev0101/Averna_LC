@@ -20,7 +20,21 @@ def create_new_student(
     current_user: User = Depends(get_current_admin_or_superadmin)
 ):
     """Create a new student (admin and superadmin only)"""
-    return create_student(db=db, student=student)
+    db_student = create_student(db=db, student=student)
+    
+    # Convert to response format
+    student_data = {
+        "id": db_student.id,
+        "name": db_student.name,
+        "surname": db_student.surname,
+        "second_name": db_student.second_name,
+        "starting_date": db_student.starting_date,
+        "num_lesson": db_student.num_lesson,
+        "total_money": db_student.total_money,
+        "courses": [course.id for course in db_student.courses],
+        "attendance": db_student.get_attendance() or []
+    }
+    return student_data
 
 @router.get("/", response_model=List[StudentResponse])
 def read_students(
@@ -96,7 +110,20 @@ def update_existing_student(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Student not found"
         )
-    return student
+    
+    # Convert to response format
+    student_data = {
+        "id": student.id,
+        "name": student.name,
+        "surname": student.surname,
+        "second_name": student.second_name,
+        "starting_date": student.starting_date,
+        "num_lesson": student.num_lesson,
+        "total_money": student.total_money,
+        "courses": [course.id for course in student.courses],
+        "attendance": student.get_attendance() or []
+    }
+    return student_data
 
 @router.delete("/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_existing_student(

@@ -26,7 +26,7 @@ def create_student(db: Session, student: StudentCreate) -> Student:
         total_money=student.total_money
     )
     
-    # Set attendance if provided
+    # Set attendance - always set to empty list if not provided
     if student.attendance:
         attendance_data = [
             {
@@ -37,6 +37,9 @@ def create_student(db: Session, student: StudentCreate) -> Student:
             for record in student.attendance
         ]
         db_student.set_attendance(attendance_data)
+    else:
+        # Ensure attendance is set to empty list
+        db_student.set_attendance([])
     
     db.add(db_student)
     db.commit()
