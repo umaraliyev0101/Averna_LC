@@ -255,7 +255,14 @@ def record_payment(
     ).all():
         student_monthly_owed += progress.calculate_owed_amount()
     
-    balance_amount = float(student.total_money) - float(student_monthly_owed)
+    # Calculate balance
+    try:
+        total_paid = student.total_money
+        balance_amount = total_paid - student_monthly_owed
+        remaining_debt = -balance_amount if balance_amount < 0 else 0
+    except Exception:
+        balance_amount = 0
+        remaining_debt = 0
     
     return {
         "payment_id": payment.id,
@@ -264,7 +271,7 @@ def record_payment(
         "payment_date": payment_date_obj,
         "student_balance": balance_amount,
         "still_owes": balance_amount < 0,
-        "remaining_debt": abs(balance_amount) if balance_amount < 0 else 0
+        "remaining_debt": remaining_debt
     }
 
 @router.get("/course/{course_id}/students-debt")
