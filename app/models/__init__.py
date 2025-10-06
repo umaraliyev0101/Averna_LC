@@ -45,6 +45,7 @@ class Course(Base):
     teacher = relationship("User", back_populates="course")
     students = relationship("Student", secondary=student_courses, back_populates="courses")
     payments = relationship("Payment", back_populates="course")
+    student_progress = relationship("StudentCourseProgress", back_populates="course")
     
     def get_week_days(self):
         """Parse JSON string to list"""
@@ -69,6 +70,7 @@ class Student(Base):
     # Relationships
     courses = relationship("Course", secondary=student_courses, back_populates="students")
     payments = relationship("Payment", back_populates="student")
+    course_progress = relationship("StudentCourseProgress", back_populates="student")
     
     def get_attendance(self):
         """Parse JSON string to list of attendance records"""
@@ -112,6 +114,32 @@ class Student(Base):
                 self.num_lesson += 1
         
         self.set_attendance(current_attendance)
+
+class StudentCourseProgress(Base):
+    """Track student enrollment and progress in specific courses"""
+    __tablename__ = "student_course_progress"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    lessons_attended = Column(Integer, default=0)  # Total lessons attended for this course
+    enrollment_date = Column(Date, nullable=False)  # When student enrolled in this course
+    
+    # Relationships
+    student = relationship("Student")
+    course = relationship("Course")
+    
+    def calculate_months_enrolled(self):
+        """Calculate how many months student has been enrolled"""
+        from datetime import date
+        today = date.today()
+        months = (today.year - self.enrollment_date.year) * 12 + (today.month - self.enrollment_date.month)
+        return max(1, months)  # At least 1 month
+    
+    def calculate_owed_amount(self):
+        """Calculate total amount owed for this course"""
+        months_enrolled = self.calculate_months_enrolled()
+        return self.course.cost * months_enrolled
 
 class Payment(Base):
     __tablename__ = "payments"

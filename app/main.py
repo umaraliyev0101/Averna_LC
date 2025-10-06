@@ -11,6 +11,7 @@ from app.api.attendance import router as attendance_router
 from app.api.payments import router as payments_router
 from app.api.users import router as users_router
 from app.api.stats import router as stats_router
+from app.api.debt import router as debt_router
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -19,7 +20,7 @@ Base.metadata.create_all(bind=engine)
 def auto_initialize_database():
     """Initialize database with sample data if empty"""
     try:
-        from app.models import User, Course, Student, Payment
+        from app.models import User, Course, Student, Payment, StudentCourseProgress
         from app.core.auth import get_password_hash
         from datetime import date, datetime
         
@@ -75,6 +76,18 @@ def auto_initialize_database():
         ]
         
         db.add_all(students)
+        db.commit()
+        
+        # Create student course enrollments for monthly tracking
+        enrollments = [
+            StudentCourseProgress(student_id=1, course_id=1, lessons_attended=12, enrollment_date=date(2024, 9, 1)),
+            StudentCourseProgress(student_id=1, course_id=3, lessons_attended=8, enrollment_date=date(2024, 9, 1)),
+            StudentCourseProgress(student_id=2, course_id=2, lessons_attended=8, enrollment_date=date(2024, 9, 15)),
+            StudentCourseProgress(student_id=3, course_id=1, lessons_attended=6, enrollment_date=date(2024, 10, 1)),
+            StudentCourseProgress(student_id=4, course_id=4, lessons_attended=15, enrollment_date=date(2024, 8, 20))
+        ]
+        
+        db.add_all(enrollments)
         db.commit()
         
         # Create sample payments
@@ -136,6 +149,7 @@ app.include_router(attendance_router, prefix="/attendance", tags=["Attendance"])
 app.include_router(payments_router, prefix="/payments", tags=["Payments"])
 app.include_router(users_router, prefix="/users", tags=["Users"])
 app.include_router(stats_router, prefix="/stats", tags=["Statistics"])
+app.include_router(debt_router, prefix="/debt", tags=["Debt Management"])
 
 @app.get("/")
 async def root():

@@ -180,3 +180,50 @@ class PaginatedResponse(BaseModel):
     total: int
     skip: int
     limit: int
+
+# Debt management schemas
+class StudentCourseProgressBase(BaseModel):
+    student_id: int
+    course_id: int
+    lessons_attended: int = 0
+    enrollment_date: date_type
+
+class StudentCourseProgressCreate(StudentCourseProgressBase):
+    pass
+
+class StudentCourseProgressResponse(StudentCourseProgressBase):
+    id: int
+    
+    class Config:
+        from_attributes = True
+
+class CourseDebtBreakdown(BaseModel):
+    course_id: int
+    course_name: str
+    monthly_fee: float
+    months_enrolled: int
+    lessons_attended: int
+    expected_lessons: int
+    total_owed_for_course: float
+    enrollment_date: date_type
+
+class StudentDebtResponse(BaseModel):
+    student_id: int
+    student_name: str
+    course_breakdown: List[CourseDebtBreakdown]
+    total_monthly_owed: float
+    total_paid: float
+    balance: float
+    owes_money: bool
+    debt_amount: float
+    overpaid_amount: float
+
+class EnrollmentRequest(BaseModel):
+    course_id: int
+    enrollment_date: Optional[str] = None
+
+class PaymentRequest(BaseModel):
+    course_id: int
+    amount: float = Field(..., gt=0)
+    description: Optional[str] = "Monthly payment"
+    payment_date: Optional[str] = None
