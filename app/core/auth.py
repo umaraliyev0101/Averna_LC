@@ -19,19 +19,37 @@ SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing with bcrypt error handling
+try:
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+except Exception as e:
+    # Fallback to basic bcrypt if CryptContext has issues
+    import bcrypt
+    pwd_context = None
+    print(f"Warning: Using fallback bcrypt due to: {e}")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain password against its hash"""
-    return pwd_context.verify(plain_password, hashed_password)
+    if pwd_context:
+        return pwd_context.verify(plain_password, hashed_password)
+    else:
+        # Fallback verification
+        import bcrypt
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 def get_password_hash(password: str) -> str:
     """Hash a password"""
     # Truncate password if longer than 72 bytes (bcrypt limitation)
     if len(password.encode('utf-8')) > 72:
         password = password[:72]
-    return pwd_context.hash(password)
+    
+    if pwd_context:
+        return pwd_context.hash(password)
+    else:
+        # Fallback hashing
+        import bcrypt
+        salt = bcrypt.gensalt()
+        return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Create JWT token"""

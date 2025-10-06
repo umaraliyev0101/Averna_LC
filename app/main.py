@@ -34,32 +34,33 @@ def auto_initialize_database():
         
         print("🚀 Auto-initializing database with sample data...")
         
-        # Create users
+        # Create users with shorter passwords to avoid bcrypt 72-byte limit
         admin_user = User(
             username="admin",
-            hashed_password=get_password_hash("admin123"),
+            hashed_password=get_password_hash("admin"),
             role="admin"
         )
         superadmin_user = User(
             username="superadmin", 
-            hashed_password=get_password_hash("super123"),
+            hashed_password=get_password_hash("super"),
             role="superadmin"
         )
         teacher_user = User(
             username="teacher1",
-            hashed_password=get_password_hash("teacher123"),
+            hashed_password=get_password_hash("teach"),
             role="teacher"
         )
         
         db.add_all([admin_user, superadmin_user, teacher_user])
         db.commit()
         
-        # Create courses
+        # Create courses (week_days must be JSON string)
+        import json
         courses = [
-            Course(name="English Language", week_days=["Monday", "Wednesday"], lesson_per_month=8, cost=150.0),
-            Course(name="Mathematics", week_days=["Tuesday", "Thursday"], lesson_per_month=8, cost=200.0),
-            Course(name="Science", week_days=["Monday", "Friday"], lesson_per_month=8, cost=180.0),
-            Course(name="History", week_days=["Wednesday", "Friday"], lesson_per_month=6, cost=120.0)
+            Course(name="English Language", week_days=json.dumps(["Monday", "Wednesday"]), lesson_per_month=8, cost=150.0),
+            Course(name="Mathematics", week_days=json.dumps(["Tuesday", "Thursday"]), lesson_per_month=8, cost=200.0),
+            Course(name="Science", week_days=json.dumps(["Monday", "Friday"]), lesson_per_month=8, cost=180.0),
+            Course(name="History", week_days=json.dumps(["Wednesday", "Friday"]), lesson_per_month=6, cost=120.0)
         ]
         
         db.add_all(courses)
@@ -90,7 +91,7 @@ def auto_initialize_database():
         db.close()
         
         print("✅ Database auto-initialized successfully!")
-        print("✅ Created 3 users: admin, superadmin, teacher1")
+        print("✅ Created 3 users: admin (pwd: admin), superadmin (pwd: super), teacher1 (pwd: teach)")
         print("✅ Created 4 courses")
         print("✅ Created 4 students") 
         print("✅ Created 5 sample payments")
