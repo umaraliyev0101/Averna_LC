@@ -1,0 +1,113 @@
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy.orm import Session
+from typing import List, Optional
+
+from ..core.database import get_db
+from ..core.dependencies import get_current_admin_or_superadmin
+from ..models import User
+from ..schemas import StudentCreate, StudentUpdate, StudentResponse
+from ..crud.student import (
+    get_student, get_students, create_student, update_student, delete_student,
+    search_students
+)
+
+router = APIRouter()
+
+@router.post("/", response_model=StudentResponse, status_code=status.HTTP_201_CREATED)
+def create_new_student(
+    student: StudentCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_or_superadmin)
+):
+    """Create a new student (admin and superadmin only)"""
+    return create_student(db=db, student=student)
+
+@router.get("/", response_model=List[StudentResponse])
+def read_students(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    name: Optional[str] = Query(None),
+    surname: Optional[str] = Query(None),
+    course_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_or_superadmin)
+):
+    """Get list of students with optional filtering (admin and superadmin only)"""
+    # Get students from database
+    students = get_students(db=db, skip=skip, limit=limit)
+    
+    # Convert to response format
+    response_data = []
+    for student in students:
+        student_data = {
+            "id": student.id,
+            "name": student.name,
+            "surname": student.surname,
+            "second_name": student.second_name,
+            "starting_date": student.starting_date,
+            "num_lesson": student.num_lesson,
+            "total_money": student.total_money,
+            "courses": [course.id for course in student.courses],
+            "attendance": student.get_attendance()
+        }
+        response_data.append(student_data)
+    
+    return response_data
+
+@router.get("/{student_id}", response_model=StudentResponse)
+def read_student(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_or_superadmin)
+):
+    """Get student by ID (admin and superadmin only)"""
+    student = get_student(db=db, student_id=student_id)
+    if student is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found"
+        )
+    
+    # Convert to response format
+    student_data = {
+        "id": student.id,
+        "name": student.name,
+        "surname": student.surname,
+        "second_name": student.second_name,
+        "starting_date": student.starting_date,
+        "num_lesson": student.num_lesson,
+        "total_money": student.total_money,
+        "courses": [course.id for course in student.courses],
+        "attendance": student.get_attendance()
+    }
+    return student_data
+
+@router.put("/{student_id}", response_model=StudentResponse)
+def update_existing_student(
+    student_id: int,
+    student_update: StudentUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_or_superadmin)
+):
+    """Update student (admin and superadmin only)"""
+    student = update_student(db=db, student_id=student_id, student_update=student_update)
+    if student is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found"
+        )
+    return student
+
+@router.delete("/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_existing_student(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_or_superadmin)
+):
+    """Delete student (admin and superadmin only)"""
+    success = delete_student(db=db, student_id=student_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found"
+        )
