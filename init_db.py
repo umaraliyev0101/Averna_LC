@@ -29,10 +29,25 @@ def init_database():
                 role="admin"  # Use string instead of enum
             )
             db.add(admin_user)
-            db.commit()
             print("✅ Admin user created (username: admin, password: admin123)")
         else:
             print("ℹ️ Admin user already exists")
+            
+        # Check if superadmin user exists
+        superadmin_user = db.query(User).filter(User.username == "superadmin").first()
+        if not superadmin_user:
+            # Create superadmin user
+            superadmin_user = User(
+                username="superadmin",
+                hashed_password=get_password_hash("super123"),
+                role="superadmin"
+            )
+            db.add(superadmin_user)
+            print("✅ Superadmin user created (username: superadmin, password: super123)")
+        else:
+            print("ℹ️ Superadmin user already exists")
+            
+        db.commit()
             
     except Exception as e:
         print(f"❌ Error creating admin user: {e}")
