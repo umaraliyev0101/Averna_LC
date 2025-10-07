@@ -48,14 +48,27 @@ def update_course(db: Session, course_id: int, course_update: CourseUpdate) -> O
     return db_course
 
 def delete_course(db: Session, course_id: int) -> bool:
-    """Delete course"""
+    """Delete course and related records"""
     db_course = db.query(Course).filter(Course.id == course_id).first()
     if not db_course:
         return False
     
-    db.delete(db_course)
-    db.commit()
-    return True
+    try:
+        # Check if any teachers are assigned to this course
+        from ..models import User
+        assigned_teachers = db.query(User).filter(User.course_id == course_id).all()
+        for teacher in assigned_teachers:
+            setattr(teacher, 'course_id', None)  # Unassign teachers from the course
+        
+        # Delete the course (cascade will handle payments and student_progress)
+        db.delete(db_course)
+        db.commit()
+        return True
+        
+    except Exception as e:
+        db.rollback()
+        print(f"Error deleting course: {e}")
+        return False
 
 def get_courses_count(db: Session) -> int:
     """Get total count of courses"""

@@ -11,6 +11,10 @@ from ..crud.user import (
     get_user_by_username
 )
 
+# Constants
+USER_NOT_FOUND_MSG = "User not found"
+USERNAME_ALREADY_EXISTS_MSG = "Username already registered"
+
 router = APIRouter()
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -25,7 +29,7 @@ def create_new_user(
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already registered"
+            detail=USERNAME_ALREADY_EXISTS_MSG
         )
     
     return create_user(db=db, user=user)
@@ -51,7 +55,7 @@ def read_user(
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            detail=USER_NOT_FOUND_MSG
         )
     return user
 
@@ -66,17 +70,17 @@ def update_existing_user(
     # Check if username is being changed and already exists
     if user_update.username:
         existing_user = get_user_by_username(db=db, username=user_update.username)
-        if existing_user and existing_user.id != user_id:
+        if existing_user is not None and getattr(existing_user, 'id', None) != user_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already registered"
+                detail=USERNAME_ALREADY_EXISTS_MSG
             )
     
     user = update_user(db=db, user_id=user_id, user_update=user_update)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            detail=USER_NOT_FOUND_MSG
         )
     return user
 
@@ -87,9 +91,23 @@ def delete_existing_user(
     current_user: User = Depends(get_current_superadmin)
 ):
     """Delete user (superadmin only)"""
-    success = delete_user(db=db, user_id=user_id)
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+    try:
+        success = delete_user(db=db, user_id=user_id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=USER_NOT_FOUND_MSG
+            )
+    except Exception as e:
+        # Handle database constraint errors
+        error_msg = str(e).lower()
+        if "constraint" in error_msg or "foreign key" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Cannot delete user: User may have associated data. Please remove associations first."
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Database error occurred: {str(e)}"
+            )

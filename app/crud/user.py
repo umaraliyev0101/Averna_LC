@@ -57,6 +57,12 @@ def delete_user(db: Session, user_id: int) -> bool:
     if not db_user:
         return False
     
-    db.delete(db_user)
-    db.commit()
-    return True
+    try:
+        db.delete(db_user)
+        db.commit()
+        return True
+        
+    except Exception as e:
+        db.rollback()
+        print(f"Error deleting user: {e}")
+        return False

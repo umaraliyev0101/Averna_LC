@@ -13,13 +13,14 @@ from app.api.users import router as users_router
 from app.api.stats import router as stats_router
 from app.api.debt import router as debt_router
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
-
 # Auto-initialize database with sample data
 def auto_initialize_database():
     """Initialize database with sample data if empty"""
     try:
+        # Create database tables first
+        Base.metadata.create_all(bind=engine)
+        print("✅ Database tables created/verified")
+        
         from app.models import User, Course, Student, Payment, StudentCourseProgress
         from app.core.auth import get_password_hash
         from datetime import date, datetime
@@ -27,11 +28,15 @@ def auto_initialize_database():
         db = SessionLocal()
         
         # Check if database is empty
-        user_count = db.query(User).count()
-        if user_count > 0:
-            print("ℹ️ Database already initialized")
-            db.close()
-            return
+        try:
+            user_count = db.query(User).count()
+            if user_count > 0:
+                print("ℹ️ Database already initialized")
+                db.close()
+                return
+        except Exception as e:
+            print(f"⚠️ Error checking user count: {e}")
+            # Continue with initialization anyway
         
         print("🚀 Auto-initializing database with sample data...")
         
@@ -157,7 +162,42 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "message": "API is operational"}
+    """Enhanced health check including database status"""
+    health_status = {
+        "status": "healthy",
+        "message": "API is operational",
+        "database": "unknown"
+    }
+    
+    try:
+        from app.core.database import SessionLocal
+        from app.models import User, StudentCourseProgress
+        
+        db = SessionLocal()
+        
+        # Test basic database connectivity
+        users_count = db.query(User).count()
+        health_status["database"] = "connected"
+        health_status["users"] = str(users_count)
+        
+        # Test if StudentCourseProgress table exists
+        try:
+            progress_count = db.query(StudentCourseProgress).count()
+            health_status["student_progress_table"] = f"exists ({progress_count} records)"
+        except Exception as table_error:
+            if "student_course_progress" in str(table_error).lower():
+                health_status["student_progress_table"] = "missing - will be created on demand"
+                health_status["status"] = "degraded"
+            else:
+                health_status["student_progress_table"] = f"error: {table_error}"
+        
+        db.close()
+        
+    except Exception as e:
+        health_status["status"] = "unhealthy"
+        health_status["database"] = f"error: {str(e)}"
+    
+    return health_status
 
 @app.get("/debug")
 async def debug_info():

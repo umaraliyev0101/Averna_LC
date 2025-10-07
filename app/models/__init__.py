@@ -10,6 +10,7 @@ Base = declarative_base()
 # Constants for table references
 COURSES_TABLE_REF = "courses.id"
 STUDENTS_TABLE_REF = "students.id"
+CASCADE_DELETE_ORPHAN = "all, delete-orphan"
 
 class UserRole(str, Enum):
     TEACHER = "teacher"
@@ -48,8 +49,8 @@ class Course(Base):
     # Relationships
     teacher = relationship("User", back_populates="course")
     students = relationship("Student", secondary=student_courses, back_populates="courses")
-    payments = relationship("Payment", back_populates="course")
-    student_progress = relationship("StudentCourseProgress", back_populates="course")
+    payments = relationship("Payment", back_populates="course", cascade=CASCADE_DELETE_ORPHAN)
+    student_progress = relationship("StudentCourseProgress", back_populates="course", cascade=CASCADE_DELETE_ORPHAN)
     
     def get_week_days(self):
         """Parse JSON string to list"""
@@ -75,8 +76,8 @@ class Student(Base):
     
     # Relationships
     courses = relationship("Course", secondary=student_courses, back_populates="students")
-    payments = relationship("Payment", back_populates="student")
-    course_progress = relationship("StudentCourseProgress", back_populates="student")
+    payments = relationship("Payment", back_populates="student", cascade=CASCADE_DELETE_ORPHAN)
+    course_progress = relationship("StudentCourseProgress", back_populates="student", cascade=CASCADE_DELETE_ORPHAN)
     
     def get_attendance(self):
         """Parse JSON string to list of attendance records"""

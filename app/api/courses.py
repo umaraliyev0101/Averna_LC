@@ -10,6 +10,9 @@ from ..crud.course import (
     get_course, get_courses, create_course, update_course, delete_course
 )
 
+# Constants
+COURSE_NOT_FOUND_MSG = "Course not found"
+
 router = APIRouter()
 
 @router.post("/", response_model=CourseResponse, status_code=status.HTTP_201_CREATED)
@@ -66,7 +69,7 @@ def read_course(
     if course is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Course not found"
+            detail=COURSE_NOT_FOUND_MSG
         )
     
     # Convert to response format
@@ -91,7 +94,7 @@ def update_existing_course(
     if course is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Course not found"
+            detail=COURSE_NOT_FOUND_MSG
         )
     
     # Convert to response format
@@ -111,9 +114,23 @@ def delete_existing_course(
     current_user: User = Depends(get_current_admin_or_superadmin)
 ):
     """Delete course (admin and superadmin only)"""
-    success = delete_course(db=db, course_id=course_id)
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Course not found"
-        )
+    try:
+        success = delete_course(db=db, course_id=course_id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=COURSE_NOT_FOUND_MSG
+            )
+    except Exception as e:
+        # Handle database constraint errors
+        error_msg = str(e).lower()
+        if "constraint" in error_msg or "foreign key" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Cannot delete course: It has associated students, payments, or teachers. Please remove these associations first."
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Database error occurred: {str(e)}"
+            )

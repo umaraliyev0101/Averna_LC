@@ -11,6 +11,9 @@ from ..crud.payment import (
     get_payments_by_student, get_payments_by_course
 )
 
+# Constants
+PAYMENT_NOT_FOUND_MSG = "Payment not found"
+
 router = APIRouter()
 
 @router.post("/", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED)
@@ -50,7 +53,7 @@ def read_payment(
     if payment is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Payment not found"
+            detail=PAYMENT_NOT_FOUND_MSG
         )
     return payment
 
@@ -66,7 +69,7 @@ def update_existing_payment(
     if payment is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Payment not found"
+            detail=PAYMENT_NOT_FOUND_MSG
         )
     return payment
 
@@ -77,9 +80,16 @@ def delete_existing_payment(
     current_user: User = Depends(get_current_admin_or_superadmin)
 ):
     """Delete payment (admin and superadmin only)"""
-    success = delete_payment(db=db, payment_id=payment_id)
-    if not success:
+    try:
+        success = delete_payment(db=db, payment_id=payment_id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=PAYMENT_NOT_FOUND_MSG
+            )
+    except Exception as e:
+        # Handle database errors
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Payment not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error occurred: {str(e)}"
         )

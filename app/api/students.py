@@ -11,6 +11,9 @@ from ..crud.student import (
     search_students
 )
 
+# Constants
+STUDENT_NOT_FOUND_MSG = "Student not found"
+
 router = APIRouter()
 
 @router.post("/", response_model=StudentResponse, status_code=status.HTTP_201_CREATED)
@@ -79,7 +82,7 @@ def read_student(
     if student is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Student not found"
+            detail=STUDENT_NOT_FOUND_MSG
         )
     
     # Convert to response format
@@ -108,7 +111,7 @@ def update_existing_student(
     if student is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Student not found"
+            detail=STUDENT_NOT_FOUND_MSG
         )
     
     # Convert to response format
@@ -132,9 +135,38 @@ def delete_existing_student(
     current_user: User = Depends(get_current_admin_or_superadmin)
 ):
     """Delete student (admin and superadmin only)"""
-    success = delete_student(db=db, student_id=student_id)
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Student not found"
-        )
+    try:
+        success = delete_student(db=db, student_id=student_id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=STUDENT_NOT_FOUND_MSG
+            )
+    except Exception as e:
+        # Handle database errors gracefully
+        error_msg = str(e).lower()
+        if "student_course_progress" in error_msg and "does not exist" in error_msg:
+            # This is the missing table error - try to create the table and retry
+            try:
+                from app.models import Base
+                from app.core.database import engine
+                Base.metadata.create_all(bind=engine)
+                
+                # Retry the deletion
+                success = delete_student(db=db, student_id=student_id)
+                if not success:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=STUDENT_NOT_FOUND_MSG
+                    )
+            except Exception as retry_error:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Database schema error. Please contact administrator. Error: {retry_error}"
+                )
+        else:
+            # Other database errors
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Database error occurred: {str(e)}"
+            )

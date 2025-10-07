@@ -89,14 +89,29 @@ def update_student(db: Session, student_id: int, student_update: StudentUpdate) 
     return db_student
 
 def delete_student(db: Session, student_id: int) -> bool:
-    """Delete student"""
+    """Delete student and related records"""
     db_student = db.query(Student).filter(Student.id == student_id).first()
     if not db_student:
         return False
     
-    db.delete(db_student)
-    db.commit()
-    return True
+    try:
+        # Delete related StudentCourseProgress records first (if table exists)
+        try:
+            from ..models import StudentCourseProgress
+            db.query(StudentCourseProgress).filter(StudentCourseProgress.student_id == student_id).delete()
+        except Exception as e:
+            # Table might not exist yet - continue with deletion
+            print(f"Warning: Could not delete StudentCourseProgress records: {e}")
+        
+        # Delete the student (this will handle other cascading deletes)
+        db.delete(db_student)
+        db.commit()
+        return True
+        
+    except Exception as e:
+        db.rollback()
+        print(f"Error deleting student: {e}")
+        return False
 
 def add_attendance_record(db: Session, student_id: int, date: date, is_absent: bool = False, reason: str = "") -> Optional[Student]:
     """Add attendance record to student"""
@@ -113,7 +128,7 @@ def get_students_count(db: Session) -> int:
     """Get total count of students"""
     return db.query(Student).count()
 
-def search_students(db: Session, name: str = None, surname: str = None, course_id: int = None, skip: int = 0, limit: int = 100) -> List[Student]:
+def search_students(db: Session, name: Optional[str] = None, surname: Optional[str] = None, course_id: Optional[int] = None, skip: int = 0, limit: int = 100) -> List[Student]:
     """Search students by name, surname, or course"""
     query = db.query(Student)
     

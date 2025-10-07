@@ -48,9 +48,15 @@ def delete_payment(db: Session, payment_id: int) -> bool:
     if not db_payment:
         return False
     
-    db.delete(db_payment)
-    db.commit()
-    return True
+    try:
+        db.delete(db_payment)
+        db.commit()
+        return True
+        
+    except Exception as e:
+        db.rollback()
+        print(f"Error deleting payment: {e}")
+        return False
 
 def get_payments_by_student(db: Session, student_id: int, skip: int = 0, limit: int = 100) -> List[Payment]:
     """Get payments by student ID"""
