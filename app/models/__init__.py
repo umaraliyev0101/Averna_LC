@@ -7,6 +7,10 @@ import json
 
 Base = declarative_base()
 
+# Constants for table references
+COURSES_TABLE_REF = "courses.id"
+STUDENTS_TABLE_REF = "students.id"
+
 class UserRole(str, Enum):
     TEACHER = "teacher"
     ADMIN = "admin"
@@ -27,7 +31,7 @@ class User(Base):
     username = Column(String(50), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     role = Column(SQLEnum(UserRole), nullable=False)
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=True)
+    course_id = Column(Integer, ForeignKey(COURSES_TABLE_REF), nullable=True)
     
     # Relationship to course (for teachers)
     course = relationship("Course", back_populates="teacher")
@@ -49,7 +53,9 @@ class Course(Base):
     
     def get_week_days(self):
         """Parse JSON string to list"""
-        return json.loads(self.week_days) if self.week_days else []
+        if isinstance(self.week_days, str) and self.week_days:
+            return json.loads(self.week_days)
+        return []
     
     def set_week_days(self, days_list):
         """Convert list to JSON string"""
@@ -74,7 +80,9 @@ class Student(Base):
     
     def get_attendance(self):
         """Parse JSON string to list of attendance records"""
-        return json.loads(self.attendance) if self.attendance else []
+        if isinstance(self.attendance, str) and self.attendance:
+            return json.loads(self.attendance)
+        return []
     
     def set_attendance(self, attendance_list):
         """Convert list to JSON string"""
@@ -120,8 +128,8 @@ class StudentCourseProgress(Base):
     __tablename__ = "student_course_progress"
     
     id = Column(Integer, primary_key=True, index=True)
-    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey(STUDENTS_TABLE_REF), nullable=False)
+    course_id = Column(Integer, ForeignKey(COURSES_TABLE_REF), nullable=False)
     lessons_attended = Column(Integer, default=0)  # Total lessons attended for this course
     enrollment_date = Column(Date, nullable=False)  # When student enrolled in this course
     
@@ -147,8 +155,8 @@ class Payment(Base):
     id = Column(Integer, primary_key=True, index=True)
     money = Column(Float, nullable=False)
     date = Column(Date, nullable=False)
-    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey(STUDENTS_TABLE_REF), nullable=False)
+    course_id = Column(Integer, ForeignKey(COURSES_TABLE_REF), nullable=False)
     description = Column(String(200), nullable=True, default="")
     
     # Relationships

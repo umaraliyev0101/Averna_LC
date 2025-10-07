@@ -9,9 +9,13 @@ from datetime import date, datetime
 from ..core.database import get_db
 from ..core.dependencies import get_current_admin_or_superadmin
 from ..models import User, Student, Course, Payment, StudentCourseProgress
-from ..schemas import PaymentCreate
 
 router = APIRouter()
+
+# Constants for error messages
+STUDENT_NOT_FOUND = "Student not found"
+COURSE_NOT_FOUND = "Course not found"
+ENROLLMENT_NOT_FOUND = "Student not enrolled in this course"
 
 @router.get("/student/{student_id}/monthly-debt")
 def calculate_monthly_debt(
@@ -23,7 +27,7 @@ def calculate_monthly_debt(
     
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
-        raise HTTPException(status_code=404, detail="Student not found")
+        raise HTTPException(status_code=404, detail=STUDENT_NOT_FOUND)
     
     total_monthly_owed = 0
     course_breakdown = []
@@ -255,14 +259,11 @@ def record_payment(
     ).all():
         student_monthly_owed += progress.calculate_owed_amount()
     
-    # Calculate balance
-    try:
-        total_paid = student.total_money
-        balance_amount = total_paid - student_monthly_owed
-        remaining_debt = -balance_amount if balance_amount < 0 else 0
-    except Exception:
-        balance_amount = 0
-        remaining_debt = 0
+    # Calculate balance using simple arithmetic
+    total_paid = float(student.total_money) if student.total_money else 0.0
+    balance_amount = total_paid - student_monthly_owed
+    still_owes = balance_amount < 0
+    remaining_debt = abs(balance_amount) if still_owes else 0.0
     
     return {
         "payment_id": payment.id,
@@ -270,7 +271,7 @@ def record_payment(
         "description": description,
         "payment_date": payment_date_obj,
         "student_balance": balance_amount,
-        "still_owes": balance_amount < 0,
+        "still_owes": still_owes,
         "remaining_debt": remaining_debt
     }
 

@@ -44,7 +44,7 @@ class UserResponse(UserBase):
 # Course schemas
 class CourseBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
-    week_days: List[str] = Field(..., min_items=1)
+    week_days: List[str] = Field(..., min_length=1)
     lesson_per_month: int = Field(..., gt=0)
     cost: float = Field(..., gt=0)
 

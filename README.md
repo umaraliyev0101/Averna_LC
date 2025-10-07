@@ -1,240 +1,199 @@
 # LC Management System
 
-A comprehensive FastAPI backend for education management system with Telegram bot integration. Provides JWT authentication, role-based access control, and complete CRUD operations for educational institutions.
+> A comprehensive FastAPI-based backend for educational institutions with monthly payment system, student management, and debt tracking.
 
-## Features
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115.6-009688.svg?style=flat&logo=FastAPI)](https://fastapi.tiangolo.com)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg?style=flat&logo=python)](https://python.org)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791.svg?style=flat&logo=postgresql)](https://postgresql.org)
+[![Railway](https://img.shields.io/badge/Railway-Deployed-0B0D0E.svg?style=flat&logo=railway)](https://railway.app)
 
-### User Roles & Permissions
+## 🚀 Features
 
-- **Teacher**: Can check attendance
-- **Admin**: Can check attendance + CRUD operations on payments, students, and courses
-- **Superadmin**: All above permissions + CRUD operations on users
+- 🔐 **JWT Authentication** with role-based permissions (Teacher, Admin, Superadmin)
+- 💰 **Monthly Payment System** with automatic debt calculation and tracking
+- 👥 **Student Management** with multi-course enrollment support
+- 📚 **Course Management** with scheduling and pricing
+- 📊 **Attendance Tracking** with lesson counting per course
+- 📈 **Comprehensive Reporting** and statistics
+- 🌐 **RESTful API** with OpenAPI/Swagger documentation
+- 🎯 **Production Ready** with Railway deployment and auto-initialization
 
-### Core Functionality
+## 📖 Documentation
 
-- **JWT Authentication** with role-based access control
-- **User Management** (superadmin only)
-- **Course Management** (admin/superadmin)
-- **Student Management** (admin/superadmin)
-- **Payment Management** (admin/superadmin)
-- **Attendance Tracking** (all roles)
-- **Statistics & Reporting** (all roles)
+- **[Complete Documentation](COMPLETE_DOCUMENTATION.md)** - Full API reference, usage examples, and guides
+- **[Technical Architecture](TECHNICAL_ARCHITECTURE.md)** - System design, database schema, and architecture details
+- **[Interactive API Docs](https://your-railway-url.com/docs)** - Live API testing interface
 
-## Project Structure
+## ⚡ Quick Start
 
-```
-LC management/
-├── app/
-│   ├── __init__.py
-│   ├── models/           # SQLAlchemy models
-│   │   └── __init__.py
-│   ├── schemas/          # Pydantic models
-│   │   └── __init__.py
-│   ├── crud/             # Database operations
-│   │   ├── __init__.py
-│   │   ├── user.py
-│   │   ├── course.py
-│   │   ├── student.py
-│   │   ├── payment.py
-│   │   └── stats.py
-│   ├── api/              # FastAPI routes
-│   │   ├── __init__.py
-│   │   ├── auth.py
-│   │   ├── users.py
-│   │   ├── courses.py
-│   │   ├── students.py
-│   │   ├── payments.py
-│   │   ├── attendance.py
-│   │   └── stats.py
-│   └── core/             # Configuration & auth
-│       ├── __init__.py
-│       ├── database.py
-│       └── auth.py
-├── main.py               # FastAPI application
-├── populate_sample_data.py
-├── requirements.txt
-├── .env
-└── data.txt             # Sample data source
+### 1. Clone & Setup
+```bash
+git clone https://github.com/umaraliyev0101/Averna_LC.git
+cd Averna_LC
+
+# Create virtual environment
+python -m venv venv
+venv\Scripts\activate  # Windows
+# source venv/bin/activate  # Linux/Mac
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-## Database Models
+### 2. Environment Configuration
+```bash
+# Create .env file
+SECRET_KEY=your-secret-key-here
+DATABASE_URL=sqlite:///./education_management.db
+CORS_ORIGINS=*
+```
 
-### User
-- `username`: str (unique)
-- `hashed_password`: str
-- `role`: Enum('teacher', 'admin', 'superadmin')
-- `course_id`: Optional[int] (for teachers)
+### 3. Start Application
+```bash
+python start.py
+```
 
-### Course
-- `name`: str
-- `week_days`: List[str] (JSON stored)
-- `lesson_per_month`: int
-- `cost`: float
+### 4. Access API
+- 🌐 **API Base**: http://localhost:8000
+- 📚 **Documentation**: http://localhost:8000/docs
+- 💓 **Health Check**: http://localhost:8000/health
 
-### Student
-- `name`, `surname`, `second_name`: str
-- `starting_date`: date
-- `num_lesson`: int
-- `total_money`: float
-- `attendance`: List[AttendanceRecord] (JSON stored)
-- `courses`: Many-to-many relationship
+## 🔑 Default Credentials
 
-### Payment
-- `money`: float
-- `date`: date
-- `student_id`: int (FK)
-- `course_id`: int (FK)
+| Username | Password | Role |
+|----------|----------|------|
+| `admin` | `admin` | Administrator |
+| `superadmin` | `super` | Super Administrator |
+| `teacher1` | `teach` | Teacher |
 
-## API Endpoints
+## 💰 Monthly Payment System
 
-### Authentication
-- `POST /auth/token` - Login and get JWT token
+The core feature of this system - automatic monthly billing and debt tracking:
 
-### Attendance (Teacher/Admin/Superadmin)
-- `POST /attendance/check` - Record attendance
-- `GET /attendance/student/{student_id}` - Get student attendance
+```python
+# Example: Student enrolled in English course for 2 months
+Course: "English Language" - 150,000 UZS/month
+Enrollment: September 1, 2024 (2 months ago)
+Total Owed: 150,000 × 2 = 300,000 UZS
+Total Paid: 250,000 UZS
+Balance: -50,000 UZS (Student owes 50,000 UZS)
+```
 
-### Payments (Admin/Superadmin)
-- `GET /payments/` - List payments (with filtering)
-- `POST /payments/` - Create payment
-- `GET /payments/{payment_id}` - Get payment
-- `PUT /payments/{payment_id}` - Update payment
-- `DELETE /payments/{payment_id}` - Delete payment
+### Key Endpoints
+- `GET /debt/student/{id}/monthly-debt` - Calculate student debt
+- `POST /debt/student/{id}/enroll-course` - Enroll in course (starts billing)
+- `POST /debt/student/{id}/payment` - Record payment
+- `GET /debt/monthly-summary` - All students debt overview
 
-### Students (Admin/Superadmin)
-- `GET /students/` - List students (with search)
-- `POST /students/` - Create student
-- `GET /students/{student_id}` - Get student
-- `PUT /students/{student_id}` - Update student
-- `DELETE /students/{student_id}` - Delete student
+## 🏗️ Architecture
 
-### Courses (Admin/Superadmin)
-- `GET /courses/` - List courses
-- `POST /courses/` - Create course
-- `GET /courses/{course_id}` - Get course
-- `PUT /courses/{course_id}` - Update course
-- `DELETE /courses/{course_id}` - Delete course
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   FastAPI        │    │   PostgreSQL    │
+│   (Telegram     │◄──►│   Backend        │◄──►│   Database      │
+│   Bot/Mobile)   │    │   (This System)  │    │                 │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+```
 
-### Users (Superadmin only)
-- `GET /users/` - List users
-- `POST /users/` - Create user
-- `GET /users/{user_id}` - Get user
-- `PUT /users/{user_id}` - Update user
-- `DELETE /users/{user_id}` - Delete user
+### Technology Stack
+- **Backend**: FastAPI 0.115.6, Python 3.11+
+- **Database**: PostgreSQL (Production), SQLite (Development)  
+- **ORM**: SQLAlchemy 2.0.36 with automatic migrations
+- **Auth**: JWT tokens with SHA256+salt password hashing
+- **Validation**: Pydantic 2.10.3 with comprehensive type checking
+- **Deployment**: Railway cloud platform with auto-deployment
 
-### Statistics (All roles)
-- `GET /stats/` - General statistics
-- `GET /stats/by-course` - Payment stats by course
-- `GET /stats/monthly/{year}` - Monthly statistics
+## 📊 Core API Endpoints
 
-## Installation & Setup
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/auth/login` | POST | User authentication |
+| `/students/` | GET/POST | Student management |
+| `/courses/` | GET/POST | Course management |
+| `/payments/` | GET/POST | Payment processing |
+| `/debt/monthly-summary` | GET | Debt overview |
+| `/stats/overview` | GET | System statistics |
 
-1. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+## 🚀 Deployment
 
-2. **Configure environment:**
-   - Copy `.env` file and update values:
-   ```
-   DATABASE_URL=sqlite:///./education_management.db
-   SECRET_KEY=your-super-secret-key-change-in-production
-   ALGORITHM=HS256
-   ACCESS_TOKEN_EXPIRE_MINUTES=30
-   ```
+### Railway (Production)
+Automatically deployed on Railway with:
+- ✅ PostgreSQL database integration  
+- ✅ Auto-initialization with sample data
+- ✅ Environment variable configuration
+- ✅ SSL/HTTPS enabled
+- ✅ Custom domain support
 
-3. **Populate sample data:**
-   ```bash
-   python populate_sample_data.py
-   ```
+### Docker (Alternative)
+```bash
+docker build -t lc-management .
+docker run -p 8000:8000 lc-management
+```
 
-4. **Run the application:**
-   ```bash
-   python main.py
-   ```
-   or
-   ```bash
-   uvicorn main:app --reload
-   ```
+## 🔧 Development
 
-## Sample Users
+### Project Structure
+```
+app/
+├── main.py              # FastAPI application entry
+├── models/              # Database models
+├── schemas/             # Pydantic validation schemas  
+├── api/                 # Route handlers
+│   ├── auth.py          # Authentication
+│   ├── debt.py          # Monthly payment system ⭐
+│   ├── students.py      # Student management
+│   └── ...
+├── core/                # Core functionality
+└── crud/                # Database operations
+```
 
-The sample data includes these test users:
+### Key Features Implementation
+- **Monthly Billing**: `StudentCourseProgress` model tracks enrollment dates
+- **Debt Calculation**: Automatic calculation based on enrollment duration
+- **Multi-Course Support**: Students can enroll in multiple courses simultaneously
+- **Role-Based Access**: Teachers, Admins, and Superadmins with different permissions
 
-| Username   | Password   | Role       |
-|------------|------------|------------|
-| admin      | admin123   | admin      |
-| teacher1   | teacher123 | teacher    |
-| teacher2   | teacher456 | teacher    |
-| superadmin | super123   | superadmin |
+## 📈 Usage Example
 
-## Authentication
+```python
+# 1. Login and get token
+POST /auth/login
+{"username": "admin", "password": "admin"}
 
-1. **Get token:**
-   ```bash
-   curl -X POST "http://localhost:8000/auth/token" \
-        -H "Content-Type: application/x-www-form-urlencoded" \
-        -d "username=admin&password=admin123"
-   ```
+# 2. Create student
+POST /students/
+{"name": "John", "surname": "Doe", ...}
 
-2. **Use token in requests:**
-   ```bash
-   curl -X GET "http://localhost:8000/students/" \
-        -H "Authorization: Bearer YOUR_TOKEN_HERE"
-   ```
+# 3. Enroll in course (starts monthly billing)
+POST /debt/student/1/enroll-course
+{"course_id": 1, "enrollment_date": "2025-10-07"}
 
-## API Documentation
+# 4. Record payment
+POST /debt/student/1/payment  
+{"course_id": 1, "amount": 150.0, "description": "October payment"}
 
-Once running, visit:
-- **Interactive docs**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+# 5. Check debt status
+GET /debt/student/1/monthly-debt
+```
 
-## Key Features Implementation
+## 🤝 Contributing
 
-### Role-Based Access Control
-- JWT tokens include user role
-- Dependency injection for role checking
-- Decorator functions for different permission levels
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open Pull Request
 
-### Attendance Management
-- Embedded JSON in Student model
-- Flexible attendance recording
-- Historical attendance tracking
+## 📄 License
 
-### Payment Tracking
-- Complete CRUD operations
-- Filtering by student, course, date range
-- Statistical aggregations
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-### Database Design
-- Proper foreign key relationships
-- Many-to-many student-course relationships
-- JSON fields for complex data (attendance, week_days)
+## 🆘 Support
 
-### Error Handling
-- Proper HTTP status codes
-- Detailed error messages
-- Database transaction safety
+- 📚 **Full Documentation**: [COMPLETE_DOCUMENTATION.md](COMPLETE_DOCUMENTATION.md)
+- 🏗️ **Architecture Guide**: [TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/umaraliyev0101/Averna_LC/issues)
+- 🧪 **API Testing**: Interactive docs at `/docs` endpoint
 
-## Production Considerations
-
-1. **Security:**
-   - Change SECRET_KEY in production
-   - Use proper CORS origins
-   - Implement rate limiting
-   - Add request validation
-
-2. **Database:**
-   - Use PostgreSQL for production
-   - Implement database migrations with Alembic
-   - Add database connection pooling
-
-3. **Monitoring:**
-   - Add logging
-   - Implement health checks
-   - Add metrics collection
-
-4. **Performance:**
-   - Add caching for statistics
-   - Implement pagination consistently
-   - Add database indexing
+---
+*Built with ❤️ for educational institutions. Ready for production use.*
