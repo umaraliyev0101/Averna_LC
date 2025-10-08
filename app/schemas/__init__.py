@@ -64,6 +64,21 @@ class UserResponse(BaseModel):
     def from_orm(cls, obj):
         """Custom from_orm to handle course_ids conversion"""
         course_ids = obj.get_course_ids() if hasattr(obj, 'get_course_ids') else []
+        # Ensure course_ids is always a list, never a string
+        if isinstance(course_ids, str):
+            try:
+                import json
+                course_ids = json.loads(course_ids)
+            except (json.JSONDecodeError, TypeError):
+                course_ids = []
+        elif course_ids is None:
+            course_ids = []
+        # Ensure all items in the list are integers
+        if isinstance(course_ids, list):
+            course_ids = [int(x) for x in course_ids if isinstance(x, (int, str)) and str(x).isdigit()]
+        else:
+            course_ids = []
+            
         return cls(
             id=obj.id,
             username=obj.username,

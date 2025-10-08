@@ -140,3 +140,10 @@ def search_students(db: Session, name: Optional[str] = None, surname: Optional[s
         query = query.join(Student.courses).filter(Course.id == course_id)
     
     return query.offset(skip).limit(limit).all()
+
+def get_students_by_course_ids(db: Session, course_ids: List[int], skip: int = 0, limit: int = 100) -> List[Student]:
+    """Get students who are enrolled in any of the specified courses"""
+    if not course_ids:
+        return []
+    
+    return db.query(Student).join(Student.courses).filter(Course.id.in_(course_ids)).distinct().offset(skip).limit(limit).all()

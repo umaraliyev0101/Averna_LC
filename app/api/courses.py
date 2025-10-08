@@ -3,11 +3,11 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from ..core.database import get_db
-from ..core.dependencies import get_current_admin_or_superadmin
+from ..core.dependencies import get_current_admin_or_superadmin, get_current_teacher_or_admin
 from ..models import User
 from ..schemas import CourseCreate, CourseUpdate, CourseResponse
 from ..crud.course import (
-    get_course, get_courses, create_course, update_course, delete_course
+    get_course, get_courses, create_course, update_course, delete_course, get_courses_by_ids
 )
 
 # Constants
@@ -39,10 +39,19 @@ def read_courses(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin_or_superadmin)
+    current_user: User = Depends(get_current_teacher_or_admin)
 ):
-    """Get list of courses (admin and superadmin only)"""
-    courses = get_courses(db=db, skip=skip, limit=limit)
+    """Get list of courses (teachers, admin and superadmin)"""
+    # Get courses based on user role
+    if current_user.role.value == "teacher":
+        # Teachers can only see their assigned courses
+        teacher_course_ids = current_user.get_course_ids()
+        if not teacher_course_ids:
+            return []  # Teacher has no assigned courses
+        courses = get_courses_by_ids(db=db, course_ids=teacher_course_ids)
+    else:
+        # Admin and superadmin can see all courses
+        courses = get_courses(db=db, skip=skip, limit=limit)
     
     # Convert to response format
     response_data = []
@@ -62,15 +71,24 @@ def read_courses(
 def read_course(
     course_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin_or_superadmin)
+    current_user: User = Depends(get_current_teacher_or_admin)
 ):
-    """Get course by ID (admin and superadmin only)"""
+    """Get course by ID (teachers, admin and superadmin)"""
     course = get_course(db=db, course_id=course_id)
     if course is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=COURSE_NOT_FOUND_MSG
         )
+    
+    # Check if teacher has access to this course
+    if current_user.role.value == "teacher":
+        teacher_course_ids = current_user.get_course_ids()
+        if course_id not in teacher_course_ids:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: You can only view courses assigned to you"
+            )
     
     # Convert to response format
     course_data = {

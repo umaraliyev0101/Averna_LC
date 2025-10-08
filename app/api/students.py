@@ -3,12 +3,12 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from ..core.database import get_db
-from ..core.dependencies import get_current_admin_or_superadmin
+from ..core.dependencies import get_current_admin_or_superadmin, get_current_teacher_or_admin
 from ..models import User
 from ..schemas import StudentCreate, StudentUpdate, StudentResponse
 from ..crud.student import (
     get_student, get_students, create_student, update_student, delete_student,
-    search_students
+    search_students, get_students_by_course_ids
 )
 
 # Constants
@@ -47,11 +47,19 @@ def read_students(
     surname: Optional[str] = Query(None),
     course_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin_or_superadmin)
+    current_user: User = Depends(get_current_teacher_or_admin)
 ):
-    """Get list of students with optional filtering (admin and superadmin only)"""
-    # Get students from database
-    students = get_students(db=db, skip=skip, limit=limit)
+    """Get list of students with optional filtering (teachers, admin and superadmin)"""
+    # Get students from database based on user role
+    if current_user.role.value == "teacher":
+        # Teachers can only see students in their assigned courses
+        teacher_course_ids = current_user.get_course_ids()
+        if not teacher_course_ids:
+            return []  # Teacher has no assigned courses
+        students = get_students_by_course_ids(db=db, course_ids=teacher_course_ids, skip=skip, limit=limit)
+    else:
+        # Admin and superadmin can see all students
+        students = get_students(db=db, skip=skip, limit=limit)
     
     # Convert to response format
     response_data = []
@@ -75,15 +83,26 @@ def read_students(
 def read_student(
     student_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin_or_superadmin)
+    current_user: User = Depends(get_current_teacher_or_admin)
 ):
-    """Get student by ID (admin and superadmin only)"""
+    """Get student by ID (teachers, admin and superadmin)"""
     student = get_student(db=db, student_id=student_id)
     if student is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=STUDENT_NOT_FOUND_MSG
         )
+    
+    # Check if teacher has access to this student
+    if current_user.role.value == "teacher":
+        teacher_course_ids = current_user.get_course_ids()
+        student_course_ids = [course.id for course in student.courses]
+        # Check if teacher and student share any courses
+        if not any(course_id in teacher_course_ids for course_id in student_course_ids):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: You can only view students in your assigned courses"
+            )
     
     # Convert to response format
     student_data = {

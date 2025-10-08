@@ -32,7 +32,8 @@ def create_new_user(
             detail=USERNAME_ALREADY_EXISTS_MSG
         )
     
-    return create_user(db=db, user=user)
+    created_user = create_user(db=db, user=user)
+    return UserResponse.from_orm(created_user)
 
 @router.get("/", response_model=List[UserResponse])
 def read_users(
@@ -42,7 +43,8 @@ def read_users(
     current_user: User = Depends(get_current_superadmin)
 ):
     """Get list of users (superadmin only)"""
-    return get_users(db=db, skip=skip, limit=limit)
+    users = get_users(db=db, skip=skip, limit=limit)
+    return [UserResponse.from_orm(user) for user in users]
 
 @router.get("/{user_id}", response_model=UserResponse)
 def read_user(
@@ -57,7 +59,7 @@ def read_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=USER_NOT_FOUND_MSG
         )
-    return user
+    return UserResponse.from_orm(user)
 
 @router.put("/{user_id}", response_model=UserResponse)
 def update_existing_user(
@@ -82,7 +84,7 @@ def update_existing_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=USER_NOT_FOUND_MSG
         )
-    return user
+    return UserResponse.from_orm(user)
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_existing_user(

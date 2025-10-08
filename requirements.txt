@@ -4,6 +4,7 @@ uvicorn[standard]==0.32.1
 
 # Database dependencies
 sqlalchemy==2.0.36
+psycopg2-binary==2.9.9
 
 # Data validation and serialization
 pydantic==2.10.3
@@ -21,4 +22,4 @@ python-dotenv==1.0.1
 # Database migrations (optional - using SQLite with direct schema creation)
 # alembic==1.14.0
 
-# Note: Removed psycopg2-binary as we're using SQLite, not PostgreSQL
+# Note: Added psycopg2-binary for PostgreSQL support in production (Railway)

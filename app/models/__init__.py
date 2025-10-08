@@ -1,11 +1,8 @@
 from sqlalchemy import Column, Integer, String, Float, Date, Boolean, Text, ForeignKey, Enum as SQLEnum, Table
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import JSON
 from enum import Enum
 import json
-
-Base = declarative_base()
+from app.core.database import Base
 
 # Constants for table references
 COURSES_TABLE_REF = "courses.id"
@@ -53,9 +50,16 @@ class User(Base):
         if isinstance(self.course_ids, str) and self.course_ids:
             try:
                 course_list = json.loads(self.course_ids)
-                return course_list if isinstance(course_list, list) else []
+                if isinstance(course_list, list):
+                    # Ensure all items are integers
+                    return [int(x) for x in course_list if isinstance(x, (int, str)) and str(x).isdigit()]
+                else:
+                    return []
             except (json.JSONDecodeError, TypeError):
                 return []
+        elif isinstance(self.course_ids, list):
+            # Handle case where course_ids is already a list
+            return [int(x) for x in self.course_ids if isinstance(x, (int, str)) and str(x).isdigit()]
         return []
     
     def set_course_ids(self, course_ids_list):

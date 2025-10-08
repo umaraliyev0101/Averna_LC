@@ -73,3 +73,10 @@ def delete_course(db: Session, course_id: int) -> bool:
 def get_courses_count(db: Session) -> int:
     """Get total count of courses"""
     return db.query(Course).count()
+
+def get_courses_by_ids(db: Session, course_ids: List[int]) -> List[Course]:
+    """Get courses by a list of IDs"""
+    if not course_ids:
+        return []
+    
+    return db.query(Course).filter(Course.id.in_(course_ids)).all()
