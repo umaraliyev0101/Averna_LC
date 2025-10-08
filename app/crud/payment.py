@@ -24,6 +24,15 @@ def create_payment(db: Session, payment: PaymentCreate) -> Payment:
         description=payment.description or ""
     )
     db.add(db_payment)
+    
+    # Update student's total_money
+    student = db.query(Student).filter(Student.id == payment.student_id).first()
+    if student:
+        # print("entered into student total money update")
+        current_total = student.total_money if student.total_money is not None else 0.0
+        new_total = current_total + payment.money
+        db.query(Student).filter(Student.id == payment.student_id).update({"total_money": new_total})
+        # print(f"Updated student {student.id} total_money to {new_total}")
     db.commit()
     db.refresh(db_payment)
     return db_payment
@@ -34,13 +43,30 @@ def update_payment(db: Session, payment_id: int, payment_update: PaymentUpdate) 
     if not db_payment:
         return None
     
+    # Get affected student IDs before update
+    affected_student_ids = {db_payment.student_id}
     update_data = payment_update.dict(exclude_unset=True)
+    if 'student_id' in update_data:
+        affected_student_ids.add(update_data['student_id'])
+    
+    # Update payment
     for field, value in update_data.items():
         setattr(db_payment, field, value)
+    
+    # Recalculate total_money for affected students
+    _recalculate_student_totals(db, list(affected_student_ids))
     
     db.commit()
     db.refresh(db_payment)
     return db_payment
+
+def _recalculate_student_totals(db: Session, student_ids):
+    """Recalculate total_money for given students based on their payments"""
+    for student_id in student_ids:
+        if student_id:  # Skip None values
+            total_payments = db.query(func.sum(Payment.money)).filter(Payment.student_id == student_id).scalar()
+            total_payments = total_payments if total_payments is not None else 0.0
+            db.query(Student).filter(Student.id == student_id).update({"total_money": total_payments})
 
 def delete_payment(db: Session, payment_id: int) -> bool:
     """Delete payment"""
@@ -48,8 +74,15 @@ def delete_payment(db: Session, payment_id: int) -> bool:
     if not db_payment:
         return False
     
+    # Store student ID to recalculate their total
+    student_id = db_payment.student_id
+    
     try:
         db.delete(db_payment)
+        
+        # Recalculate student's total_money after deletion
+        _recalculate_student_totals(db, [student_id])
+        
         db.commit()
         return True
         
