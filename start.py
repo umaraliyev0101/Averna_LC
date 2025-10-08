@@ -4,9 +4,13 @@ Railway startup script - handles PORT environment variable and ensures database 
 """
 import os
 import sys
+import logging
 import uvicorn
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.exc import ProgrammingError
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
 def ensure_database_tables():
     """Ensure all required tables exist before starting the app"""
@@ -27,6 +31,10 @@ def ensure_database_tables():
         
         # Create all tables (only missing ones will be created)
         Base.metadata.create_all(bind=engine)
+        
+        # Run database migrations
+        from app.db_migrations import run_migrations
+        run_migrations()
         
         # Verify critical tables exist
         inspector = inspect(engine)
