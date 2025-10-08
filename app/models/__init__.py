@@ -186,7 +186,7 @@ class Student(Base):
         if course and course.lesson_per_month > 0:
             lesson_cost = course.cost / course.lesson_per_month
             current_total = self.total_money if self.total_money is not None else 0.0
-            self.total_money = max(0.0, current_total - lesson_cost)
+            self.total_money = current_total - lesson_cost
     
     def _refund_lesson_cost(self, course_id, db_session):
         """Refund cost of one lesson to student's total_money"""

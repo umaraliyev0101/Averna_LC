@@ -138,7 +138,7 @@ class StudentBase(BaseModel):
     second_name: Optional[str] = Field(None, max_length=50)
     starting_date: date_type
     num_lesson: int = Field(default=0, ge=0)
-    total_money: float = Field(default=0.0, ge=0)
+    total_money: float = Field(default=0.0)
     courses: List[int] = Field(default=[])
 
 class StudentCreate(StudentBase):
@@ -150,7 +150,7 @@ class StudentUpdate(BaseModel):
     second_name: Optional[str] = Field(None, max_length=50)
     starting_date: Optional[date_type] = None
     num_lesson: Optional[int] = Field(None, ge=0)
-    total_money: Optional[float] = Field(None, ge=0)
+    total_money: Optional[float] = None
     courses: Optional[List[int]] = None
     attendance: Optional[List[AttendanceRecord]] = None
 

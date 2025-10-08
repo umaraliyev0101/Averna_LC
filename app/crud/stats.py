@@ -9,9 +9,22 @@ from .payment import get_total_payments, get_monthly_payments
 from .student import get_students_count
 
 def get_total_student_money(db: Session) -> float:
-    """Get total money from all students' total_money field"""
-    result = db.query(func.sum(Student.total_money)).scalar()
-    return float(result) if result is not None else 0.0
+    """Get total money from all students' total_money field (only positive balances)"""
+    students = db.query(Student).all()
+    total = 0.0
+    for student in students:
+        if student.total_money is not None and student.total_money > 0:
+            total += student.total_money
+    return float(total)
+
+def get_total_unpaid_money(db: Session) -> float:
+    """Get total unpaid money (absolute value of negative balances)"""
+    students = db.query(Student).all()
+    unpaid = 0.0
+    for student in students:
+        if student.total_money is not None and student.total_money < 0:
+            unpaid += abs(student.total_money)
+    return float(unpaid)
 
 def get_statistics(db: Session) -> StatsResponse:
     """Get comprehensive statistics"""
@@ -19,7 +32,7 @@ def get_statistics(db: Session) -> StatsResponse:
     current_year = current_date.year
     current_month = current_date.month
     
-    # Total money from all students (reflects all money in the system)
+    # Total money from students with positive balances only
     total_money = get_total_student_money(db)
     
     # Monthly money (current month payments)
@@ -28,10 +41,9 @@ def get_statistics(db: Session) -> StatsResponse:
     # Total students
     total_students = get_students_count(db)
     
-    # Calculate unpaid amounts (simplified - assume no debt tracking for now)
-    # In a real system, you'd have expected payments vs actual payments
-    unpaid = 0.0
-    monthly_unpaid = 0.0
+    # Calculate unpaid amounts (students with negative balance)
+    unpaid = get_total_unpaid_money(db)
+    monthly_unpaid = 0.0  # This could be refined if needed
     
     return StatsResponse(
         total_money=total_money,
