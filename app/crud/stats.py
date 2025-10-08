@@ -8,16 +8,21 @@ from ..schemas import StatsResponse
 from .payment import get_total_payments, get_monthly_payments
 from .student import get_students_count
 
+def get_total_student_money(db: Session) -> float:
+    """Get total money from all students' total_money field"""
+    result = db.query(func.sum(Student.total_money)).scalar()
+    return float(result) if result is not None else 0.0
+
 def get_statistics(db: Session) -> StatsResponse:
     """Get comprehensive statistics"""
     current_date = datetime.now()
     current_year = current_date.year
     current_month = current_date.month
     
-    # Total money from all payments
-    total_money = get_total_payments(db)
+    # Total money from all students (reflects all money in the system)
+    total_money = get_total_student_money(db)
     
-    # Monthly money (current month)
+    # Monthly money (current month payments)
     monthly_money = get_monthly_payments(db, current_year, current_month)
     
     # Total students
@@ -63,17 +68,17 @@ def get_monthly_statistics(db: Session, year: int) -> Dict[int, float]:
     
     return monthly_stats
 
-def get_student_payment_summary(db: Session, student_id: int) -> Dict[str, float]:
+def get_student_payment_summary(db: Session, student_id: int):
     """Get payment summary for a specific student"""
     result = db.query(func.sum(Payment.money)).filter(Payment.student_id == student_id).scalar()
-    total_paid = result or 0.0
+    total_paid = float(result) if result is not None else 0.0
     
     # Get student's courses and calculate expected payment
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
         return {"total_paid": 0.0, "expected_payment": 0.0, "balance": 0.0}
     
-    expected_payment = student.total_money
+    expected_payment = student.total_money if student.total_money is not None else 0.0
     balance = expected_payment - total_paid
     
     return {

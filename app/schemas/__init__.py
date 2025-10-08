@@ -11,11 +11,13 @@ class UserRole(str, Enum):
 # Attendance schemas
 class AttendanceRecord(BaseModel):
     date: date_type
+    course_id: Optional[int] = None  # Optional for backward compatibility
     isAbsent: bool = False
     reason: Optional[str] = ""
 
 class AttendanceCheck(BaseModel):
     student_id: int
+    course_id: int
     date: date_type
     isAbsent: bool = False
     reason: Optional[str] = ""

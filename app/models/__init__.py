@@ -135,40 +135,70 @@ class Student(Base):
         """Convert list to JSON string"""
         self.attendance = json.dumps(attendance_list, default=str)
     
-    def add_attendance_record(self, date, is_absent=False, reason=""):
-        """Add single attendance record and update lesson count"""
+    def add_attendance_record(self, date, is_absent=False, reason="", course_id=None, db_session=None):
+        """Add single attendance record and update lesson count and total_money"""
         current_attendance = self.get_attendance()
         
-        # Check if attendance for this date already exists
+        # Check if attendance for this date and course already exists
         date_str = str(date)
-        existing_record = next((record for record in current_attendance if record["date"] == date_str), None)
+        existing_record = next((record for record in current_attendance 
+                              if record["date"] == date_str and record.get("course_id") == course_id), None)
         
         if existing_record:
             # Update existing record
             was_absent_before = existing_record["isAbsent"]
             existing_record["isAbsent"] = is_absent
             existing_record["reason"] = reason
+            existing_record["course_id"] = course_id
             
-            # Adjust lesson count if attendance status changed
+            # Adjust lesson count and total_money if attendance status changed
             if was_absent_before and not is_absent:
-                # Was absent before, now present - increment lesson count
+                # Was absent before, now present - increment lesson count and deduct money
                 self.num_lesson += 1
+                self._deduct_lesson_cost(course_id, db_session)
             elif not was_absent_before and is_absent:
-                # Was present before, now absent - decrement lesson count
+                # Was present before, now absent - decrement lesson count and refund money
                 self.num_lesson = max(0, self.num_lesson - 1)
+                self._refund_lesson_cost(course_id, db_session)
         else:
             # Add new record
             current_attendance.append({
                 "date": date_str,
+                "course_id": course_id,
                 "isAbsent": is_absent,
                 "reason": reason
             })
             
-            # If student is present, increment lesson count
+            # If student is present, increment lesson count and deduct money
             if not is_absent:
                 self.num_lesson += 1
+                self._deduct_lesson_cost(course_id, db_session)
         
         self.set_attendance(current_attendance)
+    
+    def _deduct_lesson_cost(self, course_id, db_session):
+        """Deduct cost of one lesson from student's total_money"""
+        if not course_id or not db_session:
+            return
+        
+        from sqlalchemy.orm import Session
+        course = db_session.query(Course).filter(Course.id == course_id).first()
+        if course and course.lesson_per_month > 0:
+            lesson_cost = course.cost / course.lesson_per_month
+            current_total = self.total_money if self.total_money is not None else 0.0
+            self.total_money = max(0.0, current_total - lesson_cost)
+    
+    def _refund_lesson_cost(self, course_id, db_session):
+        """Refund cost of one lesson to student's total_money"""
+        if not course_id or not db_session:
+            return
+        
+        from sqlalchemy.orm import Session
+        course = db_session.query(Course).filter(Course.id == course_id).first()
+        if course and course.lesson_per_month > 0:
+            lesson_cost = course.cost / course.lesson_per_month
+            current_total = self.total_money if self.total_money is not None else 0.0
+            self.total_money = current_total + lesson_cost
 
 class StudentCourseProgress(Base):
     """Track student enrollment and progress in specific courses"""

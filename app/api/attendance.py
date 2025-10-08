@@ -33,7 +33,8 @@ def check_attendance(
         student_id=attendance.student_id,
         date=attendance.date,
         is_absent=attendance.isAbsent,
-        reason=attendance.reason
+        reason=attendance.reason,
+        course_id=attendance.course_id
     )
     
     if not updated_student:
@@ -45,6 +46,7 @@ def check_attendance(
     return {
         "message": "Attendance recorded successfully",
         "student_id": attendance.student_id,
+        "course_id": attendance.course_id,
         "date": attendance.date,
         "isAbsent": attendance.isAbsent,
         "reason": attendance.reason

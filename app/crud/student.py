@@ -113,13 +113,13 @@ def delete_student(db: Session, student_id: int) -> bool:
         print(f"Error deleting student: {e}")
         return False
 
-def add_attendance_record(db: Session, student_id: int, date: date, is_absent: bool = False, reason: str = "") -> Optional[Student]:
+def add_attendance_record(db: Session, student_id: int, date: date, is_absent: bool = False, reason: str = "", course_id: Optional[int] = None) -> Optional[Student]:
     """Add attendance record to student"""
     db_student = db.query(Student).filter(Student.id == student_id).first()
     if not db_student:
         return None
     
-    db_student.add_attendance_record(date, is_absent, reason)
+    db_student.add_attendance_record(date, is_absent, reason, course_id, db)
     db.commit()
     db.refresh(db_student)
     return db_student
