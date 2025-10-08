@@ -25,6 +25,14 @@ student_courses = Table(
     Column('course_id', Integer, ForeignKey('courses.id'), primary_key=True)
 )
 
+# Association table for many-to-many relationship between users (teachers) and courses
+teacher_courses = Table(
+    'teacher_courses',
+    Base.metadata,
+    Column('teacher_id', Integer, ForeignKey('users.id'), primary_key=True),
+    Column('course_id', Integer, ForeignKey('courses.id'), primary_key=True)
+)
+
 class User(Base):
     __tablename__ = "users"
     
@@ -32,10 +40,44 @@ class User(Base):
     username = Column(String(50), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     role = Column(SQLEnum(UserRole), nullable=False)
-    course_id = Column(Integer, ForeignKey(COURSES_TABLE_REF), nullable=True)
+    course_id = Column(Integer, ForeignKey(COURSES_TABLE_REF), nullable=True)  # Keep for backward compatibility
+    course_ids = Column(Text, nullable=True, default="[]")  # JSON string storing list of course IDs
     
-    # Relationship to course (for teachers)
-    course = relationship("Course", back_populates="teacher")
+    # Many-to-many relationship to courses (for teachers)
+    courses = relationship("Course", secondary=teacher_courses, back_populates="teachers")
+    # Keep old relationship for backward compatibility  
+    course = relationship("Course", foreign_keys=[course_id])
+    
+    def get_course_ids(self):
+        """Parse JSON string to list of course IDs"""
+        if isinstance(self.course_ids, str) and self.course_ids:
+            try:
+                course_list = json.loads(self.course_ids)
+                return course_list if isinstance(course_list, list) else []
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return []
+    
+    def set_course_ids(self, course_ids_list):
+        """Convert list of course IDs to JSON string and sync with many-to-many relationship"""
+        if isinstance(course_ids_list, list):
+            self.course_ids = json.dumps(course_ids_list)
+        else:
+            self.course_ids = "[]"
+    
+    def add_course_id(self, course_id):
+        """Add a course ID to the list"""
+        current_courses = self.get_course_ids()
+        if course_id not in current_courses:
+            current_courses.append(course_id)
+            self.set_course_ids(current_courses)
+    
+    def remove_course_id(self, course_id):
+        """Remove a course ID from the list"""
+        current_courses = self.get_course_ids()
+        if course_id in current_courses:
+            current_courses.remove(course_id)
+            self.set_course_ids(current_courses)
 
 class Course(Base):
     __tablename__ = "courses"
@@ -47,7 +89,7 @@ class Course(Base):
     cost = Column(Float, nullable=False)
     
     # Relationships
-    teacher = relationship("User", back_populates="course")
+    teachers = relationship("User", secondary=teacher_courses, back_populates="courses")
     students = relationship("Student", secondary=student_courses, back_populates="courses")
     payments = relationship("Payment", back_populates="course", cascade=CASCADE_DELETE_ORPHAN)
     student_progress = relationship("StudentCourseProgress", back_populates="course", cascade=CASCADE_DELETE_ORPHAN)

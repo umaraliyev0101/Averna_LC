@@ -31,6 +31,7 @@ ENV/
 *.sqlite
 *.sqlite3
 education_management.db
+*.db.backup_*
 
 # Environment variables
 .env
@@ -53,11 +54,14 @@ Thumbs.db
 *.log
 logs/
 
-# Test files (we already cleaned these up)
+# Test files and migration scripts
 test_*.py
 *_test.py
 diagnose_*.py
 *_diagnostic.py
+migrate_*.py
+*_migration.py
+MIGRATION_*.md
 
 # Temporary files
 *.tmp
@@ -66,7 +70,7 @@ diagnose_*.py
 # Railway
 .railway/
 
-# DigitalOcean files (not needed for Railway)
+# Deployment files (removed from project)
 docker-compose.yml
 deploy.sh
 .env.production

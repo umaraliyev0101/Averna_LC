@@ -13,14 +13,13 @@ from app.api.users import router as users_router
 from app.api.stats import router as stats_router
 from app.api.debt import router as debt_router
 
+# Create database tables
+Base.metadata.create_all(bind=engine)
+
 # Auto-initialize database with sample data
 def auto_initialize_database():
     """Initialize database with sample data if empty"""
     try:
-        # Create database tables first
-        Base.metadata.create_all(bind=engine)
-        print("✅ Database tables created/verified")
-        
         from app.models import User, Course, Student, Payment, StudentCourseProgress
         from app.core.auth import get_password_hash
         from datetime import date, datetime
@@ -28,15 +27,11 @@ def auto_initialize_database():
         db = SessionLocal()
         
         # Check if database is empty
-        try:
-            user_count = db.query(User).count()
-            if user_count > 0:
-                print("ℹ️ Database already initialized")
-                db.close()
-                return
-        except Exception as e:
-            print(f"⚠️ Error checking user count: {e}")
-            # Continue with initialization anyway
+        user_count = db.query(User).count()
+        if user_count > 0:
+            print("ℹ️ Database already initialized")
+            db.close()
+            return
         
         print("🚀 Auto-initializing database with sample data...")
         

@@ -24,7 +24,15 @@ class AttendanceCheck(BaseModel):
 class UserBase(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     role: UserRole
-    course_id: Optional[int] = None
+    course_ids: Optional[List[int]] = Field(default=[])
+    
+    @validator('course_ids')
+    def validate_course_ids(cls, v, values):
+        role = values.get('role')
+        if role in [UserRole.ADMIN, UserRole.SUPERADMIN]:
+            # Admin and superadmin should have empty course lists
+            return []
+        return v if v is not None else []
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=6)
@@ -33,13 +41,35 @@ class UserUpdate(BaseModel):
     username: Optional[str] = Field(None, min_length=3, max_length=50)
     password: Optional[str] = Field(None, min_length=6)
     role: Optional[UserRole] = None
-    course_id: Optional[int] = None
+    course_ids: Optional[List[int]] = None
+    
+    @validator('course_ids')
+    def validate_course_ids(cls, v, values):
+        role = values.get('role')
+        if role in [UserRole.ADMIN, UserRole.SUPERADMIN]:
+            # Admin and superadmin should have empty course lists
+            return []
+        return v
 
-class UserResponse(UserBase):
+class UserResponse(BaseModel):
     id: int
+    username: str
+    role: UserRole
+    course_ids: List[int] = []
     
     class Config:
         from_attributes = True
+    
+    @classmethod
+    def from_orm(cls, obj):
+        """Custom from_orm to handle course_ids conversion"""
+        course_ids = obj.get_course_ids() if hasattr(obj, 'get_course_ids') else []
+        return cls(
+            id=obj.id,
+            username=obj.username,
+            role=obj.role,
+            course_ids=course_ids
+        )
 
 # Course schemas
 class CourseBase(BaseModel):

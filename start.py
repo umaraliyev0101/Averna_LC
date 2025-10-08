@@ -22,7 +22,7 @@ def ensure_database_tables():
         # Create engine
         engine = create_engine(database_url, pool_pre_ping=True)
         
-        # Import models to register them
+        # Import models to register them with SQLAlchemy
         from app.models import Base
         
         # Create all tables (only missing ones will be created)
