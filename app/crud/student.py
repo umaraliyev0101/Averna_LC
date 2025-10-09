@@ -148,3 +148,54 @@ def get_archived_students(db: Session, skip: int = 0, limit: int = 100) -> List[
 def get_archived_students_count(db: Session) -> int:
     """Get total count of archived students"""
     return db.query(Student).filter(Student.is_archived == True).count()
+
+def update_attendance_record(db: Session, student_id: int, date: date, course_id: Optional[int] = None, is_absent: Optional[bool] = None, reason: Optional[str] = None) -> Optional[Student]:
+    """Update a specific attendance record for a student"""
+    db_student = db.query(Student).filter(Student.id == student_id).first()
+    if not db_student:
+        return None
+    
+    current_attendance = db_student.get_attendance()
+    date_str = str(date)
+    
+    # Find the record to update
+    record_found = False
+    for record in current_attendance:
+        if record["date"] == date_str and record.get("course_id") == course_id:
+            # Update the fields that are provided
+            if is_absent is not None:
+                record["isAbsent"] = is_absent
+            if reason is not None:
+                record["reason"] = reason
+            record_found = True
+            break
+    
+    if record_found:
+        db_student.set_attendance(current_attendance)
+        db.commit()
+        db.refresh(db_student)
+        return db_student
+    
+    return None
+
+def delete_attendance_record(db: Session, student_id: int, date: date, course_id: Optional[int] = None) -> Optional[Student]:
+    """Delete a specific attendance record for a student"""
+    db_student = db.query(Student).filter(Student.id == student_id).first()
+    if not db_student:
+        return None
+    
+    current_attendance = db_student.get_attendance()
+    date_str = str(date)
+    
+    # Find and remove the record
+    original_length = len(current_attendance)
+    current_attendance = [record for record in current_attendance 
+                         if not (record["date"] == date_str and record.get("course_id") == course_id)]
+    
+    if len(current_attendance) < original_length:
+        db_student.set_attendance(current_attendance)
+        db.commit()
+        db.refresh(db_student)
+        return db_student
+    
+    return None

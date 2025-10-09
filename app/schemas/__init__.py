@@ -22,6 +22,12 @@ class AttendanceCheck(BaseModel):
     isAbsent: bool = False
     reason: Optional[str] = ""
 
+class AttendanceUpdate(BaseModel):
+    date: date_type
+    course_id: Optional[int] = None
+    isAbsent: Optional[bool] = None
+    reason: Optional[str] = None
+
 # User schemas
 class UserBase(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
