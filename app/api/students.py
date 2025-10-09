@@ -8,7 +8,7 @@ from ..models import User
 from ..schemas import StudentCreate, StudentUpdate, StudentResponse
 from ..crud.student import (
     get_student, get_students, create_student, update_student, delete_student,
-    search_students, get_students_by_course_ids
+    search_students, get_students_by_course_ids, get_archived_students, get_archived_students_count
 )
 
 # Constants
@@ -35,7 +35,8 @@ def create_new_student(
         "num_lesson": db_student.num_lesson,
         "total_money": db_student.total_money,
         "courses": [course.id for course in db_student.courses],
-        "attendance": db_student.get_attendance() or []
+        "attendance": db_student.get_attendance() or [],
+        "is_archived": db_student.is_archived
     }
     return student_data
 
@@ -73,7 +74,8 @@ def read_students(
             "num_lesson": student.num_lesson,
             "total_money": student.total_money,
             "courses": [course.id for course in student.courses],
-            "attendance": student.get_attendance()
+            "attendance": student.get_attendance(),
+            "is_archived": student.is_archived
         }
         response_data.append(student_data)
     
@@ -114,7 +116,8 @@ def read_student(
         "num_lesson": student.num_lesson,
         "total_money": student.total_money,
         "courses": [course.id for course in student.courses],
-        "attendance": student.get_attendance()
+        "attendance": student.get_attendance(),
+        "is_archived": student.is_archived
     }
     return student_data
 
@@ -143,17 +146,18 @@ def update_existing_student(
         "num_lesson": student.num_lesson,
         "total_money": student.total_money,
         "courses": [course.id for course in student.courses],
-        "attendance": student.get_attendance() or []
+        "attendance": student.get_attendance() or [],
+        "is_archived": student.is_archived
     }
     return student_data
 
-@router.delete("/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{student_id}")
 def delete_existing_student(
     student_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_or_superadmin)
 ):
-    """Delete student (admin and superadmin only)"""
+    """Archive student instead of deleting (admin and superadmin only)"""
     try:
         success = delete_student(db=db, student_id=student_id)
         if not success:
@@ -161,6 +165,13 @@ def delete_existing_student(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=STUDENT_NOT_FOUND_MSG
             )
+        
+        return {
+            "message": "Student archived successfully",
+            "student_id": student_id,
+            "action": "archived"
+        }
+        
     except Exception as e:
         # Handle database errors gracefully
         error_msg = str(e).lower()
@@ -178,6 +189,11 @@ def delete_existing_student(
                         status_code=status.HTTP_404_NOT_FOUND,
                         detail=STUDENT_NOT_FOUND_MSG
                     )
+                return {
+                    "message": "Student archived successfully",
+                    "student_id": student_id,
+                    "action": "archived"
+                }
             except Exception as retry_error:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -189,3 +205,32 @@ def delete_existing_student(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Database error occurred: {str(e)}"
             )
+
+@router.get("/archived/", response_model=List[StudentResponse])
+def read_archived_students(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_or_superadmin)
+):
+    """Get list of archived students (admin and superadmin only)"""
+    students = get_archived_students(db=db, skip=skip, limit=limit)
+    
+    # Convert to response format
+    response_data = []
+    for student in students:
+        student_data = {
+            "id": student.id,
+            "name": student.name,
+            "surname": student.surname,
+            "second_name": student.second_name,
+            "starting_date": student.starting_date,
+            "num_lesson": student.num_lesson,
+            "total_money": student.total_money,
+            "courses": [course.id for course in student.courses],
+            "attendance": student.get_attendance(),
+            "is_archived": student.is_archived
+        }
+        response_data.append(student_data)
+    
+    return response_data

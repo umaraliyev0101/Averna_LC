@@ -140,6 +140,7 @@ class StudentBase(BaseModel):
     num_lesson: int = Field(default=0, ge=0)
     total_money: float = Field(default=0.0)
     courses: List[int] = Field(default=[])
+    is_archived: bool = Field(default=False)
 
 class StudentCreate(StudentBase):
     attendance: Optional[List[AttendanceRecord]] = Field(default=[])
@@ -153,6 +154,7 @@ class StudentUpdate(BaseModel):
     total_money: Optional[float] = None
     courses: Optional[List[int]] = None
     attendance: Optional[List[AttendanceRecord]] = None
+    is_archived: Optional[bool] = None
 
 class StudentResponse(BaseModel):
     id: int
@@ -164,6 +166,7 @@ class StudentResponse(BaseModel):
     total_money: float = 0.0
     courses: List[int] = []
     attendance: List[dict] = []  # Changed to dict to be more flexible
+    is_archived: bool = False
     
     class Config:
         from_attributes = True

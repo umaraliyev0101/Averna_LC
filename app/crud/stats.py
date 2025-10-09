@@ -9,13 +9,9 @@ from .payment import get_total_payments, get_monthly_payments
 from .student import get_students_count
 
 def get_total_student_money(db: Session) -> float:
-    """Get total money from all students' total_money field (only positive balances)"""
-    students = db.query(Student).all()
-    total = 0.0
-    for student in students:
-        if student.total_money is not None and student.total_money > 0:
-            total += student.total_money
-    return float(total)
+    """Get total money from all payments (this represents all money paid into the system)"""
+    result = db.query(func.sum(Payment.money)).scalar()
+    return float(result) if result is not None else 0.0
 
 def get_total_unpaid_money(db: Session) -> float:
     """Get total unpaid money (absolute value of negative balances)"""

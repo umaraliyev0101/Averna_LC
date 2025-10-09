@@ -119,6 +119,7 @@ class Student(Base):
     num_lesson = Column(Integer, default=0)
     total_money = Column(Float, default=0.0)
     attendance = Column(Text, nullable=True)  # JSON string of attendance records
+    is_archived = Column(Boolean, default=False)  # Mark student as archived instead of deleting
     
     # Relationships
     courses = relationship("Course", secondary=student_courses, back_populates="students")
