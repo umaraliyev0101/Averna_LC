@@ -11,7 +11,7 @@ def get_student(db: Session, student_id: int) -> Optional[Student]:
     """Get student by ID"""
     return db.query(Student).filter(Student.id == student_id).first()
 
-def get_students(db: Session, skip: int = 0, limit: int = 100) -> List[Student]:
+def get_students(db: Session, skip: int = 0, limit: int = 1000) -> List[Student]:
     """Get list of students with pagination (excluding archived)"""
     return db.query(Student).filter(Student.is_archived == False).offset(skip).limit(limit).all()
 
