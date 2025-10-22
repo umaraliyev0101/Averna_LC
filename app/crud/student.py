@@ -106,13 +106,13 @@ def delete_student(db: Session, student_id: int) -> bool:
         print(f"Error archiving student: {e}")
         return False
 
-def add_attendance_record(db: Session, student_id: int, date: date, is_absent: bool = False, reason: str = "", course_id: Optional[int] = None) -> Optional[Student]:
+def add_attendance_record(db: Session, student_id: int, date: date, is_absent: bool = False, reason: str = "", course_id: Optional[int] = None, charge_money: bool = True) -> Optional[Student]:
     """Add attendance record to student"""
     db_student = db.query(Student).filter(Student.id == student_id).first()
     if not db_student:
         return None
     
-    db_student.add_attendance_record(date, is_absent, reason, course_id, db)
+    db_student.add_attendance_record(date, is_absent, reason, course_id, charge_money, db)
     db.commit()
     db.refresh(db_student)
     return db_student
@@ -121,7 +121,7 @@ def get_students_count(db: Session) -> int:
     """Get total count of students (excluding archived)"""
     return db.query(Student).filter(Student.is_archived == False).count()
 
-def search_students(db: Session, name: Optional[str] = None, surname: Optional[str] = None, course_id: Optional[int] = None, skip: int = 0, limit: int = 100) -> List[Student]:
+def search_students(db: Session, name: Optional[str] = None, surname: Optional[str] = None, course_id: Optional[int] = None, skip: int = 0, limit: int = 1000) -> List[Student]:
     """Search students by name, surname, or course (excluding archived)"""
     query = db.query(Student).filter(Student.is_archived == False)
     
@@ -134,14 +134,14 @@ def search_students(db: Session, name: Optional[str] = None, surname: Optional[s
     
     return query.offset(skip).limit(limit).all()
 
-def get_students_by_course_ids(db: Session, course_ids: List[int], skip: int = 0, limit: int = 100) -> List[Student]:
+def get_students_by_course_ids(db: Session, course_ids: List[int], skip: int = 0, limit: int = 1000) -> List[Student]:
     """Get students who are enrolled in any of the specified courses (excluding archived)"""
     if not course_ids:
         return []
     
     return db.query(Student).filter(Student.is_archived == False).join(Student.courses).filter(Course.id.in_(course_ids)).distinct().offset(skip).limit(limit).all()
 
-def get_archived_students(db: Session, skip: int = 0, limit: int = 100) -> List[Student]:
+def get_archived_students(db: Session, skip: int = 0, limit: int = 1000) -> List[Student]:
     """Get list of archived students"""
     return db.query(Student).filter(Student.is_archived == True).offset(skip).limit(limit).all()
 
@@ -149,7 +149,7 @@ def get_archived_students_count(db: Session) -> int:
     """Get total count of archived students"""
     return db.query(Student).filter(Student.is_archived == True).count()
 
-def update_attendance_record(db: Session, student_id: int, date: date, course_id: Optional[int] = None, is_absent: Optional[bool] = None, reason: Optional[str] = None) -> Optional[Student]:
+def update_attendance_record(db: Session, student_id: int, date: date, course_id: Optional[int] = None, is_absent: Optional[bool] = None, reason: Optional[str] = None, charge_money: Optional[bool] = None) -> Optional[Student]:
     """Update a specific attendance record for a student"""
     db_student = db.query(Student).filter(Student.id == student_id).first()
     if not db_student:
@@ -162,11 +162,42 @@ def update_attendance_record(db: Session, student_id: int, date: date, course_id
     record_found = False
     for record in current_attendance:
         if record["date"] == date_str and record.get("course_id") == course_id:
+            # Store old values for financial adjustments
+            old_is_absent = record.get("isAbsent", False)
+            old_charge_money = record.get("charge_money", True)
+            
             # Update the fields that are provided
             if is_absent is not None:
                 record["isAbsent"] = is_absent
             if reason is not None:
                 record["reason"] = reason
+            if charge_money is not None:
+                record["charge_money"] = charge_money
+            
+            # Get new values (use old if not updated)
+            new_is_absent = record["isAbsent"]
+            new_charge_money = record.get("charge_money", True)
+            
+            # Adjust finances and lesson count if charging status changed
+            if old_charge_money and not new_charge_money:
+                # Was charging before, now not charging - refund
+                db_student._refund_lesson_cost(course_id, db)
+                if not old_is_absent:
+                    db_student.num_lesson = max(0, db_student.num_lesson - 1)
+            elif not old_charge_money and new_charge_money:
+                # Was not charging before, now charging - deduct
+                db_student._deduct_lesson_cost(course_id, db)
+                if not new_is_absent:
+                    db_student.num_lesson += 1
+            elif old_charge_money and new_charge_money:
+                # Both charging, but attendance status might have changed
+                if old_is_absent and not new_is_absent:
+                    # Was absent, now present - increment lesson count
+                    db_student.num_lesson += 1
+                elif not old_is_absent and new_is_absent:
+                    # Was present, now absent - decrement lesson count
+                    db_student.num_lesson = max(0, db_student.num_lesson - 1)
+            
             record_found = True
             break
     

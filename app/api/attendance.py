@@ -18,6 +18,11 @@ def check_attendance(
 ):
     """
     Check attendance for a student (accessible by teachers, admins, and superadmins)
+    
+    Attendance options:
+    - Present (isAbsent=False, charge_money=True): Student attended, money is deducted
+    - Absent Excused (isAbsent=True, charge_money=False): Student absent with valid reason, no money deducted
+    - Absent Unexcused (isAbsent=True, charge_money=True): Student absent, money is still deducted
     """
     # Verify student exists
     student = get_student(db, attendance.student_id)
@@ -34,7 +39,8 @@ def check_attendance(
         date=attendance.date,
         is_absent=attendance.isAbsent,
         reason=attendance.reason or "",
-        course_id=attendance.course_id
+        course_id=attendance.course_id,
+        charge_money=attendance.charge_money
     )
     
     if not updated_student:
@@ -49,7 +55,8 @@ def check_attendance(
         "course_id": attendance.course_id,
         "date": attendance.date,
         "isAbsent": attendance.isAbsent,
-        "reason": attendance.reason
+        "reason": attendance.reason,
+        "charge_money": attendance.charge_money
     }
 
 @router.get("/student/{student_id}", response_model=list)
@@ -81,6 +88,11 @@ def update_student_attendance(
 ):
     """
     Update a specific attendance record for a student
+    
+    Allows changing attendance status and charging options:
+    - Change from present to absent (excused or unexcused)
+    - Change from absent to present
+    - Change charging status (charge_money: True/False)
     """
     from datetime import datetime
     
@@ -108,7 +120,8 @@ def update_student_attendance(
         date=attendance_date,
         course_id=course_id,
         is_absent=attendance_update.isAbsent if attendance_update else None,
-        reason=attendance_update.reason if attendance_update else None
+        reason=attendance_update.reason if attendance_update else None,
+        charge_money=attendance_update.charge_money if attendance_update else None
     )
     
     if not updated_student:
@@ -123,7 +136,8 @@ def update_student_attendance(
         "date": date,
         "course_id": course_id,
         "isAbsent": attendance_update.isAbsent if attendance_update else None,
-        "reason": attendance_update.reason if attendance_update else None
+        "reason": attendance_update.reason if attendance_update else None,
+        "charge_money": attendance_update.charge_money if attendance_update else None
     }
 
 @router.delete("/student/{student_id}")

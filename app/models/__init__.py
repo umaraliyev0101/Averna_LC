@@ -136,8 +136,15 @@ class Student(Base):
         """Convert list to JSON string"""
         self.attendance = json.dumps(attendance_list, default=str)
     
-    def add_attendance_record(self, date, is_absent=False, reason="", course_id=None, db_session=None):
-        """Add single attendance record and update lesson count and total_money"""
+    def add_attendance_record(self, date, is_absent=False, reason="", course_id=None, charge_money=True, db_session=None):
+        """
+        Add single attendance record and update lesson count and total_money.
+        
+        Logic:
+        - Present (is_absent=False, charge_money=True): increment lesson count, deduct money
+        - Absent excused (is_absent=True, charge_money=False): no lesson count change, no money deduction
+        - Absent unexcused (is_absent=True, charge_money=True): no lesson count change, but deduct money
+        """
         current_attendance = self.get_attendance()
         
         # Check if attendance for this date and course already exists
@@ -148,32 +155,41 @@ class Student(Base):
         if existing_record:
             # Update existing record
             was_absent_before = existing_record["isAbsent"]
+            was_charged_before = existing_record.get("charge_money", True)  # Default to True for old records
+            
             existing_record["isAbsent"] = is_absent
             existing_record["reason"] = reason
             existing_record["course_id"] = course_id
+            existing_record["charge_money"] = charge_money
             
-            # Adjust lesson count and total_money if attendance status changed
-            if was_absent_before and not is_absent:
-                # Was absent before, now present - increment lesson count and deduct money
-                self.num_lesson += 1
-                self._deduct_lesson_cost(course_id, db_session)
-            elif not was_absent_before and is_absent:
-                # Was present before, now absent - decrement lesson count and refund money
-                self.num_lesson = max(0, self.num_lesson - 1)
+            # Adjust lesson count and total_money based on changes
+            # Refund first if money was charged before
+            if was_charged_before:
                 self._refund_lesson_cost(course_id, db_session)
+                if not was_absent_before:
+                    self.num_lesson = max(0, self.num_lesson - 1)
+            
+            # Charge new status
+            if charge_money:
+                self._deduct_lesson_cost(course_id, db_session)
+                if not is_absent:
+                    self.num_lesson += 1
         else:
             # Add new record
             current_attendance.append({
                 "date": date_str,
                 "course_id": course_id,
                 "isAbsent": is_absent,
-                "reason": reason
+                "reason": reason,
+                "charge_money": charge_money
             })
             
-            # If student is present, increment lesson count and deduct money
-            if not is_absent:
-                self.num_lesson += 1
+            # Apply charges based on attendance type
+            if charge_money:
                 self._deduct_lesson_cost(course_id, db_session)
+                if not is_absent:
+                    # Only increment lesson count if present
+                    self.num_lesson += 1
         
         self.set_attendance(current_attendance)
     
