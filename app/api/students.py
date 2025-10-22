@@ -43,7 +43,7 @@ def create_new_student(
 @router.get("/", response_model=List[StudentResponse])
 def read_students(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(1000, ge=1, le=10000),
     name: Optional[str] = Query(None),
     surname: Optional[str] = Query(None),
     course_id: Optional[int] = Query(None),
@@ -51,16 +51,37 @@ def read_students(
     current_user: User = Depends(get_current_teacher_or_admin)
 ):
     """Get list of students with optional filtering (teachers, admin and superadmin)"""
-    # Get students from database based on user role
+    # Check if any search filters are provided
+    has_search_filters = name is not None or surname is not None or course_id is not None
+    
+    # Get students from database based on user role and search filters
     if current_user.role.value == "teacher":
         # Teachers can only see students in their assigned courses
         teacher_course_ids = current_user.get_course_ids()
         if not teacher_course_ids:
             return []  # Teacher has no assigned courses
-        students = get_students_by_course_ids(db=db, course_ids=teacher_course_ids, skip=skip, limit=limit)
+        
+        if has_search_filters:
+            # Use search_students and filter by teacher's courses
+            all_matching_students = search_students(db=db, name=name, surname=surname, course_id=course_id, skip=0, limit=10000)
+            # Filter to only students in teacher's courses
+            students = []
+            for student in all_matching_students:
+                student_course_ids = [course.id for course in student.courses]
+                if any(cid in teacher_course_ids for cid in student_course_ids):
+                    students.append(student)
+            # Apply pagination manually
+            students = students[skip:skip + limit]
+        else:
+            students = get_students_by_course_ids(db=db, course_ids=teacher_course_ids, skip=skip, limit=limit)
     else:
         # Admin and superadmin can see all students
-        students = get_students(db=db, skip=skip, limit=limit)
+        if has_search_filters:
+            # Use search functionality when filters are provided
+            students = search_students(db=db, name=name, surname=surname, course_id=course_id, skip=skip, limit=limit)
+        else:
+            # Get all students without filters
+            students = get_students(db=db, skip=skip, limit=limit)
     
     # Convert to response format
     response_data = []
@@ -209,7 +230,7 @@ def delete_existing_student(
 @router.get("/archived/", response_model=List[StudentResponse])
 def read_archived_students(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(1000, ge=1, le=10000),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_or_superadmin)
 ):

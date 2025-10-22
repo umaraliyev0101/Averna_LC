@@ -11,7 +11,7 @@ def get_student(db: Session, student_id: int) -> Optional[Student]:
     """Get student by ID"""
     return db.query(Student).filter(Student.id == student_id).first()
 
-def get_students(db: Session, skip: int = 0, limit: int = 1000) -> List[Student]:
+def get_students(db: Session, skip: int = 0, limit: int = 10000) -> List[Student]:
     """Get list of students with pagination (excluding archived)"""
     return db.query(Student).filter(Student.is_archived == False).offset(skip).limit(limit).all()
 
@@ -121,7 +121,7 @@ def get_students_count(db: Session) -> int:
     """Get total count of students (excluding archived)"""
     return db.query(Student).filter(Student.is_archived == False).count()
 
-def search_students(db: Session, name: Optional[str] = None, surname: Optional[str] = None, course_id: Optional[int] = None, skip: int = 0, limit: int = 1000) -> List[Student]:
+def search_students(db: Session, name: Optional[str] = None, surname: Optional[str] = None, course_id: Optional[int] = None, skip: int = 0, limit: int = 10000) -> List[Student]:
     """Search students by name, surname, or course (excluding archived)"""
     query = db.query(Student).filter(Student.is_archived == False)
     
@@ -134,14 +134,14 @@ def search_students(db: Session, name: Optional[str] = None, surname: Optional[s
     
     return query.offset(skip).limit(limit).all()
 
-def get_students_by_course_ids(db: Session, course_ids: List[int], skip: int = 0, limit: int = 1000) -> List[Student]:
+def get_students_by_course_ids(db: Session, course_ids: List[int], skip: int = 0, limit: int = 10000) -> List[Student]:
     """Get students who are enrolled in any of the specified courses (excluding archived)"""
     if not course_ids:
         return []
     
     return db.query(Student).filter(Student.is_archived == False).join(Student.courses).filter(Course.id.in_(course_ids)).distinct().offset(skip).limit(limit).all()
 
-def get_archived_students(db: Session, skip: int = 0, limit: int = 1000) -> List[Student]:
+def get_archived_students(db: Session, skip: int = 0, limit: int = 10000) -> List[Student]:
     """Get list of archived students"""
     return db.query(Student).filter(Student.is_archived == True).offset(skip).limit(limit).all()
 
