@@ -102,6 +102,35 @@ def read_students(
     
     return response_data
 
+@router.get("/archived/", response_model=List[StudentResponse])
+def read_archived_students(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(1000, ge=1, le=10000),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_or_superadmin)
+):
+    """Get list of archived students (admin and superadmin only)"""
+    students = get_archived_students(db=db, skip=skip, limit=limit)
+    
+    # Convert to response format
+    response_data = []
+    for student in students:
+        student_data = {
+            "id": student.id,
+            "name": student.name,
+            "surname": student.surname,
+            "second_name": student.second_name,
+            "starting_date": student.starting_date,
+            "num_lesson": student.num_lesson,
+            "total_money": student.total_money,
+            "courses": [course.id for course in student.courses],
+            "attendance": student.get_attendance(),
+            "is_archived": student.is_archived
+        }
+        response_data.append(student_data)
+    
+    return response_data
+
 @router.get("/{student_id}", response_model=StudentResponse)
 def read_student(
     student_id: int,
@@ -226,32 +255,3 @@ def delete_existing_student(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Database error occurred: {str(e)}"
             )
-
-@router.get("/archived/", response_model=List[StudentResponse])
-def read_archived_students(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(1000, ge=1, le=10000),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin_or_superadmin)
-):
-    """Get list of archived students (admin and superadmin only)"""
-    students = get_archived_students(db=db, skip=skip, limit=limit)
-    
-    # Convert to response format
-    response_data = []
-    for student in students:
-        student_data = {
-            "id": student.id,
-            "name": student.name,
-            "surname": student.surname,
-            "second_name": student.second_name,
-            "starting_date": student.starting_date,
-            "num_lesson": student.num_lesson,
-            "total_money": student.total_money,
-            "courses": [course.id for course in student.courses],
-            "attendance": student.get_attendance(),
-            "is_archived": student.is_archived
-        }
-        response_data.append(student_data)
-    
-    return response_data
