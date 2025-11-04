@@ -21,6 +21,7 @@ def check_attendance(
     
     Attendance options:
     - Present (isAbsent=False, charge_money=True): Student attended, money is deducted
+    - Present Bonus (isAbsent=False, charge_money=False): Student attended a bonus lesson, no money deducted
     - Absent Excused (isAbsent=True, charge_money=False): Student absent with valid reason, no money deducted
     - Absent Unexcused (isAbsent=True, charge_money=True): Student absent, money is still deducted
     """
@@ -92,6 +93,7 @@ def update_student_attendance(
     Allows changing attendance status and charging options:
     - Change from present to absent (excused or unexcused)
     - Change from absent to present
+    - Change from present to present bonus (or vice versa)
     - Change charging status (charge_money: True/False)
     """
     from datetime import datetime

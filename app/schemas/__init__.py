@@ -14,7 +14,7 @@ class AttendanceRecord(BaseModel):
     course_id: Optional[int] = None  # Optional for backward compatibility
     isAbsent: bool = False
     reason: Optional[str] = ""
-    charge_money: bool = True  # Whether to charge money (True for present or unexcused absent)
+    charge_money: bool = True  # Whether to charge money (True for present/unexcused absent, False for bonus lesson/excused absent)
 
 class AttendanceCheck(BaseModel):
     student_id: int
@@ -22,7 +22,7 @@ class AttendanceCheck(BaseModel):
     date: date_type
     isAbsent: bool = False
     reason: Optional[str] = ""
-    charge_money: bool = True  # True: charge money (present or unexcused absent), False: don't charge (excused absent)
+    charge_money: bool = True  # True: charge money (present or unexcused absent), False: don't charge (bonus lesson or excused absent)
 
 class AttendanceUpdate(BaseModel):
     date: date_type
