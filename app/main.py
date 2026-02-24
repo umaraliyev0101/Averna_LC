@@ -115,8 +115,9 @@ def auto_initialize_database():
             db.rollback()
             db.close()
 
-# Run auto-initialization
-auto_initialize_database()
+# Run auto-initialization if enabled via environment variable
+if os.getenv("ENABLE_SAMPLE_DATA", "false").lower() == "true":
+    auto_initialize_database()
 
 app = FastAPI(
     title="LC Management API",
